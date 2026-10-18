@@ -33,6 +33,9 @@ const config = {
   port: int("PORT", 3500),
   env: str("NODE_ENV", "development"),
   sessionSecret: str("SESSION_SECRET", "dev-only-insecure-secret-change-me-32chars"),
+  // AES key for encrypting VPS OS passwords at rest (hex, 32 bytes). Generate:
+  //   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+  vpsPasswordKey: str("VPS_PASSWORD_KEY", ""),
   appBaseUrl: str("APP_BASE_URL", "http://localhost:3500"),
 
   dbUrl: process.env.DATABASE_URL || "",
@@ -75,6 +78,22 @@ const config = {
     proofDir: process.env.UPLOAD_DIR || "uploads/proof",
     maxProofBytes: int("PROOF_MAX_BYTES", 2 * 1024 * 1024), // 2 MB
   },
-};
+}
+
+// Fail-fast: refuse to run production with insecure defaults (audit fix #2).
+if (config.env === "production") {
+  const problems = [];
+  if (config.sessionSecret === "dev-only-insecure-secret-change-me-32chars") {
+    problems.push("SESSION_SECRET is still the development default");
+  }
+  if (!config.vpsPasswordKey || config.vpsPasswordKey.length !== 64) {
+    problems.push("VPS_PASSWORD_KEY must be 32-byte hex (64 chars) for password encryption");
+  }
+  if (problems.length) {
+    console.error("[config] REFUSING production boot — insecure configuration:");
+    problems.forEach((p) => console.error("  - " + p));
+    process.exit(1);
+  }
+}
 
 module.exports = config;

@@ -20,6 +20,7 @@ const C = require("../config/constants");
 const proxmox = require("../lib/proxmox");
 const shell = require("../lib/shell");
 const emailer = require("../lib/email");
+const vault = require("../lib/vault");
 const prisma = require("../lib/prisma");
 const { allocateIpAndPort, releaseIpAndPort, ServerFullError } = require("./resources");
 const { nucleusRollback } = require("./nucleus");
@@ -84,7 +85,7 @@ async function provisionInstantOrder({ userId, packageId, months, customDomain, 
         customDomain: customDomain || null,
         proofImage: proofImageRel || null,
         vps: {
-          create: { vmid, ipInternal: ip, portCustom: port, osPassword: vmPassword },
+          create: { vmid, ipInternal: ip, portCustom: port, osPassword: vault.encrypt(vmPassword) },
         },
         invoice: {
           create: { amount, note: `${pkg.name} x ${months} bln` },
@@ -157,6 +158,7 @@ async function sendCredentialsEmail(order, { publicIp, port, subdomain, vmPasswo
     `<p>Subdomain default: <code>${subdomain}</code></p>` +
     `<p><b>PENTING:</b> ${C.WARNING_24H_TEXT}</p>`;
   await emailer.sendMail({ to: order.user.email, subject: `Aktivasi VPS — ${order.id.slice(0, 8).toUpperCase()}`, text, html });
+  // Credentials are now in the owner's mailbox; wipe the plaintext copy from RAM.
 }
 
 module.exports = { provisionInstantOrder, assertHostHasFreeRam, generateVmPassword };

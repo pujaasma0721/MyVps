@@ -13,6 +13,10 @@ const C = require("../config/constants");
 
 const router = express.Router();
 
+/** Rate limit injection point — assigned from server.js (audit fix #3). */
+let loginLimiter = (req, res, next) => next();
+function setLoginLimiter(fn) { loginLimiter = fn; }
+
 // ---- Landing page: active packages --------------------------------------
 router.get("/", async (req, res, next) => {
   try {
@@ -29,7 +33,7 @@ router.get("/login", (req, res) => {
   res.render("pages/login", { title: "Masuk", error: null, next: req.query.next || "/", user: null });
 });
 
-router.post("/login", async (req, res, next) => {
+router.post("/login", (req, res, next) => loginLimiter(req, res, next), async (req, res, next) => {
   try {
     const user = await login(req.body.email || "", req.body.password || "");
     if (!user) {
@@ -44,7 +48,7 @@ router.get("/register", (req, res) => {
   res.render("pages/register", { title: "Daftar", errors: null, values: {}, user: null });
 });
 
-router.post("/register", async (req, res, next) => {
+router.post("/register", (req, res, next) => loginLimiter(req, res, next), async (req, res, next) => {
   const values = { fullName: req.body.fullName, email: req.body.email, whatsapp: req.body.whatsapp };
   try {
     const pw = String(req.body.password || "");
@@ -126,4 +130,4 @@ router.post("/checkout/:packageId", proofUpload.single("proofImage"), async (req
   }
 });
 
-module.exports = router;
+module.exports = { router, setLoginLimiter };

@@ -21,9 +21,6 @@ module.exports = {
   // SSH user inside every VPS (cloud-init)
   VM_USER: "ubuntu",
 
-  // Internal bridge for VPS traffic (set in .env: PROXMOX_BRIDGE)
-  BRIDGE: process.env.PROXMOX_BRIDGE || "vmbr1",
-
   // Task polling
   TASK_POLL_INTERVAL_MS: 5000,
   TASK_POLL_TIMEOUT_MS: 10 * 60 * 1000, // 10 minutes hard cap

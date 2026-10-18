@@ -7,6 +7,7 @@ const path = require("path");
 const prisma = require("../lib/prisma");
 const { requireUser } = require("../middleware/auth");
 const { proofUpload } = require("../lib/multer");
+const vault = require("../lib/vault");
 const shell = require("../lib/shell");
 const config = require("../config");
 const C = require("../config/constants");
@@ -54,6 +55,43 @@ router.post("/order/:orderId/proof", proofUpload.single("proofImage"), async (re
     await prisma.order.update({
       where: { id: order.id },
       data: { proofImage: `uploads/proof/${req.file.filename}` },
+    });
+    res.redirect(`/client/order/${order.id}`);
+  } catch (e) { next(e); }
+});
+
+// ---- Wire a://CUSTOM domain to the VPS (Region 2.3) ------------------------
+// ---- Resend SSH credentials (audit fix #7 — password is never shown in UI) --
+router.post("/order/:orderId/resend-credentials", async (req, res, next) => {
+  try {
+    const order = await prisma.order.findFirst({
+      where: { id: req.params.orderId, userId: req.user.id },
+      include: { vps: true, package: true },
+    });
+    if (!order || !order.vps) return res.status(404).json({ error: "Pesanan/VPS tidak ditemukan." });
+
+    const vmPassword = vault.decrypt(order.vps.osPassword);
+    const pkg = order.package;
+    const text =
+      `Kredensial VPS (kirim ulang):\n\n` +
+      `  - IP Publik (NAT): ${config.publicIp}\n` +
+      `  - Port SSH Kustom: ${order.vps.portCustom}\n` +
+      `  - Username: ${C.VM_USER}\n` +
+      `  - Password : ${vmPassword}\n\n` +
+      `Subdomain default: ${order.id}.${config.mainDomain}\n` +
+      `SSH: ssh ${C.VM_USER}@${config.publicIp} -p ${order.vps.portCustom}\n\n`;
+    const html =
+      `<p>Kredensial VPS (kirim ulang):</p><ul>` +
+      `<li>IP Publik: <b>${config.publicIp}</b></li>` +
+      `<li>Port SSH Kustom: <b>${order.vps.portCustom}</b></li>` +
+      `<li>Username: <b>${C.VM_USER}</b></li>` +
+      `<li>Password: <b>${vmPassword}</b></li></ul>` +
+      `<p>SSH: <code>ssh ${C.VM_USER}@${config.publicIp} -p ${order.vps.portCustom}</code></p>`;
+    const emailer = require("../lib/email");
+    await emailer.sendMail({
+      to: req.user.email,
+      subject: `Kirim ulang kredensial VPS — ${order.id.slice(0, 8).toUpperCase()}`,
+      text, html,
     });
     res.redirect(`/client/order/${order.id}`);
   } catch (e) { next(e); }

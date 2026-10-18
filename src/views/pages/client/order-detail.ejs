@@ -29,7 +29,7 @@
     <div class="card stat">
       <div class="label">Kredensial SSH</div>
       <div class="value" style="font-size:1rem"><code><%= order.vps ? order.vps.osUsername : '—' %></code></div>
-      <div class="sub">Password dikirim ke email Anda</div>
+      <div class="sub">Password dikirim ke email Anda. <a class="btn ghost sm" style="font-size:.75rem" href="/client/order/<%= order.id %>/resend-credentials">✉ Kirim ulang kredensial</a></div>
     </div>
     <div class="card stat">
       <div class="label">Subdomain Default</div>

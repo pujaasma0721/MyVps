@@ -12,9 +12,10 @@ const cookieParser = require("cookie-parser");
 const path = require("path");
 const http = require("http");
 
+const rateLimit = require("express-rate-limit");
 const config = require("./src/config");
 const { loadUser } = require("./src/middleware/auth");
-const publicRoutes = require("./src/routes/public");
+const { router: publicRoutes, setLoginLimiter } = require("./src/routes/public");
 const clientRoutes = require("./src/routes/client");
 const adminRoutes = require("./src/routes/admin");
 const prisma = require("./src/lib/prisma");
@@ -52,6 +53,25 @@ app.use("/proofs", express.static(path.join(__dirname, "uploads"), { maxAge: "1d
 // boot-time auth load (reads cookie -> req.user)
 app.use(loadUser());
 
+// CSRF guard for stateful POSTs (audit fix #4): reject cross-origin form
+// posts using the Origin header — a hostile page on another origin cannot
+// forge requests with the correct origin. Same-origin POST & curl-style
+// clients without an Origin header (native forms, API tools) pass through.
+app.use((req, res, next) => {
+  if (req.method !== "POST") return next();
+  const origin = req.headers.origin;
+  if (!origin) return next(); // non-browser or same-origin GET-style submit
+  try {
+    const o = new URL(origin);
+    if (o.host === req.headers.host) return next();
+  } catch (_e) { /* fallthrough */ }
+  return res.status(403).render("pages/message", {
+    title: "Permintaan Ditolak",
+    message: "Permintaan POST lintas-origin (CSRF) diblokir.",
+    user: req.user || null,
+  });
+});
+
 // inject common EJS locals
 app.use((req, res, next) => {
   res.locals.user = req.user || null;
@@ -59,6 +79,16 @@ app.use((req, res, next) => {
   next();
 });
 
+// Brute-force guard for credential endpoints (audit fix #3).
+const loginLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  limit: 20,                 // 20 attempts per window per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: "Terlalu banyak percobaan. Coba lagi dalam 10 menit.",
+});
+
+setLoginLimiter(loginLimiter);
 app.use("/", publicRoutes);
 app.use("/client", clientRoutes);
 app.use("/admin", adminRoutes);

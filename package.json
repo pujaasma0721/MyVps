@@ -22,10 +22,11 @@
     "dotenv": "^16.4.7",
     "ejs": "^3.1.10",
     "express": "^4.21.2",
+    "express-rate-limit": "^8.7.1",
     "helmet": "^8.0.0",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
-    "nodemailer": "^6.9.16",
+    "nodemailer": "^10.1.7",
     "prisma": "^6.11.1",
     "undici": "^8.12.2",
     "uuid": "^11.1.0"
