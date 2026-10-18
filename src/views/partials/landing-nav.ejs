@@ -1,0 +1,20 @@
+<header class="landing-nav">
+  <div class="inner">
+    <a href="/" class="brand">
+      <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true"><rect width="26" height="26" rx="7" fill="#fff"/><circle cx="13" cy="15" r="5.5" fill="#245bfa"/><path d="M8.5 8.5A6 6 0 0 1 19 10.7" stroke="#245bfa" stroke-width="2" stroke-linecap="round"/></svg>
+      MYVPS
+    </a>
+    <nav class="links">
+      <a href="#paket">Paket</a>
+      <a href="#keunggulan">Keunggulan</a>
+      <a href="#faq">Bantuan</a>
+      <% if (locals.user) { %>
+        <a href="/client">Client Area</a>
+        <a href="/logout" class="link-plain">Keluar</a>
+      <% } else { %>
+        <a href="/register" class="link-plain">Daftar</a>
+        <a href="/login" class="login-pill">LOGIN</a>
+      <% } %>
+    </nav>
+  </div>
+</header>

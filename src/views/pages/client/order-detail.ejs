@@ -1,0 +1,109 @@
+<%- include('../../partials/head', { bodyClass: 'appwrap', title: 'VPS ' + order.id.slice(0,8).toUpperCase() }) %>
+<%- include('../../partials/sidebar') %>
+
+<main class="main">
+  <div class="pagehead">
+    <div>
+      <h1>VPS <code><%= order.id.slice(0,8).toUpperCase() %></code> — <%= order.package.name %></h1>
+      <p>Dibuat <%= new Date(order.createdAt).toLocaleString('id-ID') %> · <%= order.package.vcpu %> vCPU / <%= (order.package.ramMb/1024).toFixed(order.package.ramMb%1024?1:0) %> GB RAM / <%= order.package.diskGb %> GB SSD</p>
+    </div>
+    <div>
+      <% if (order.status === 'ACTIVE') { %><span class="badge green" style="font-size:.9rem">Aktif</span>
+      <% } else if (order.status === 'PENDING_PAYMENT') { %><span class="badge amber" style="font-size:.9rem">Menunggu Verifikasi</span>
+      <% } else { %><span class="badge red" style="font-size:.9rem"><%= order.status %></span><% } %>
+    </div>
+  </div>
+
+  <% if (order.status === 'PENDING_PAYMENT') { %>
+    <div class="banner-warning" style="margin-bottom:1.25rem">
+      <span class="big">⚠</span><span><%= warningText %></span>
+    </div>
+  <% } %>
+
+  <div class="stats">
+    <div class="card stat">
+      <div class="label">SSH — IP Publik</div>
+      <div class="value" style="font-size:1.2rem"><%= publicIp %></div>
+      <div class="sub">Port kustom: <code><%= order.vps ? order.vps.portCustom : '—' %></code></div>
+    </div>
+    <div class="card stat">
+      <div class="label">Kredensial SSH</div>
+      <div class="value" style="font-size:1rem"><code><%= order.vps ? order.vps.osUsername : '—' %></code></div>
+      <div class="sub">Password dikirim ke email Anda</div>
+    </div>
+    <div class="card stat">
+      <div class="label">Subdomain Default</div>
+      <div class="value" style="font-size:1rem"><code><%= subDomain %></code></div>
+      <div class="sub">proxy_pass → http://<%= order.vps ? order.vps.ipInternal : '' %>:80 (wildcard cert)</div>
+    </div>
+    <div class="card stat">
+      <div class="label">Custom Domain</div>
+      <div class="value" style="font-size:1rem"><%= order.customDomain ? `<code>${order.customDomain}</code>` : '—' %></div>
+      <div class="sub">SSL Let's Encrypt otomatis via certbot</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div>
+      <div class="card">
+        <h3>Bukti Transfer</h3>
+        <% if (order.proofImage) { %>
+          <button class="btn ghost" data-lightbox="/proofs/<%= order.proofImage.replace('uploads/','') %>" data-caption="Bukti transfer QRIS — order <%= order.id.slice(0,8).toUpperCase() %>">
+            🔍 Lihat bukti (zoom)
+          </button>
+        <% } else { %>
+          <p style="color:var(--muted-foreground);font-size:.9rem">Belum ada bukti transfer.</p>
+        <% } %>
+        <form method="post" action="/client/order/<%= order.id %>/proof" enctype="multipart/form-data">
+          <input type="file" name="proofImage" accept="image/png,image/jpeg,image/webp" required>
+          <div style="height:.5rem"></div>
+          <button class="btn btn sm">Unggah / Ganti Bukti</button>
+        </form>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h3>Tambah Custom Domain</h3>
+        <p style="color:var(--muted-foreground);font-size:.85rem">
+          Arahkan A record domain Anda ke <b><%= publicIp %></b>, lalu isi di sini.
+          Nginx akan dibuat proxy_pass ke VPS dan sertifikat Let's Encrypt diterbitkan otomatis.
+        </p>
+        <form onsubmit="wireDomain(event)">
+          <div class="field">
+            <input type="text" id="wire-domain-input" placeholder="domain-anda.com" required>
+          </div>
+          <button class="btn sm" type="submit">Hubungkan Domain</button>
+          <span id="wire-domain-msg" style="font-size:.85rem;color:var(--muted-foreground);margin-left:.5rem"></span>
+        </form>
+      </div>
+
+      <div class="card">
+        <h3>Koneksi SSH</h3>
+        <pre style="background:var(--surface-2);border-radius:var(--radius);padding:.8rem;overflow-x:auto">ssh <%= order.vps ? order.vps.osUsername : 'user' %>@<%= publicIp %> -p <%= order.vps ? order.vps.portCustom : 22 %></pre>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="lightbox"><figure><img alt=""><figcaption><span></span><span>ESC / klik luar untuk tutup</span></figcaption></figure></div>
+
+<script>
+function wireDomain(ev) {
+  ev.preventDefault();
+  var inp = document.getElementById("wire-domain-input");
+  var msg = document.getElementById("wire-domain-msg");
+  msg.textContent = "Menghubungkan…";
+  fetch("/client/order/<%= order.id %>/domain", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ domain: inp.value })
+  }).then(function (r) { return r.json(); }).then(function (j) {
+    if (j.ok) { msg.textContent = "✔ Domain terhubung."; setTimeout(function(){location.reload();}, 800); }
+    else { msg.textContent = "✘ " + (j.error || "gagal"); }
+  }).catch(function () { msg.textContent = "✘ jaringan error"; });
+}
+</script>
+
+<%- include('../../partials/foot') %>

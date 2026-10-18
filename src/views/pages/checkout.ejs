@@ -1,0 +1,114 @@
+<%- include('../partials/head', { bodyClass: 'pubwrap', title: 'Checkout — ' + pkg.name }) %>
+<%- include('../partials/public-nav') %>
+
+<main style="max-width:840px;margin:2rem auto 4rem;padding:0 1.5rem">
+  <div class="pagehead">
+    <div>
+      <h1>Checkout — <%= pkg.name %></h1>
+      <p><%= pkg.vcpu %> vCPU · <%= (pkg.ramMb/1024).toFixed(pkg.ramMb % 1024 ? 1 : 0) %> GB RAM · <%= pkg.diskGb %> GB SSD</p>
+    </div>
+    <a href="/" class="btn ghost sm">← Batal</a>
+  </div>
+
+  <div class="banner-warning"><span class="big">⚠</span><span style="font-size:1rem"><%= warningText %></span></div>
+
+  <div style="height:1rem"></div>
+
+  <div class="card">
+    <div class="qris-box">
+      <img src="/static/payment/qris.jpg" alt="QRIS Pembayaran" data-lightbox="/static/payment/qris.jpg" data-caption="QRIS Pembayaran — scan via GoPay/BCA/Mandiri/BNI/BRI" onerror="this.style.display='none'">
+      <div>
+        <div class="label" style="color:var(--muted-foreground);font-size:.8rem;text-transform:uppercase;font-weight:600">Total Tagihan</div>
+        <div class="amount-big">Rp <%= amount.toLocaleString('id-ID') %></div>
+        <div style="color:var(--muted-foreground);font-size:.85rem"><%= months %> bulan × <%= pkg.name %></div>
+        <div style="height:.6rem"></div>
+        <div style="font-size:.86rem;color:var(--muted-foreground);max-width:26rem"><%= paymentNote %></div>
+        <div class="hint" style="color:var(--muted-foreground);font-size:.78rem">Scan QRIS di atas, transfer <b>tepat</b> sesuai nominal.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="height:1rem"></div>
+
+  <form class="card" method="post" action="/checkout/<%= pkg.id %>" enctype="multipart/form-data">
+    <h3>Data Pemesanan</h3>
+    <div class="field-row">
+      <div class="field">
+        <label>Nama</label>
+        <input type="text" value="<%= user ? user.fullName : '' %>" disabled>
+        <input type="hidden" name="fullName" value="<%= user ? user.fullName : '' %>">
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" value="<%= user ? user.email : '' %>" disabled>
+      </div>
+    </div>
+    <p class="hint" style="color:var(--muted-foreground);font-size:.8rem;margin-top:-.5rem">
+      <% if (!user) { %>Anda harus <a href="/login?next=/checkout/<%= pkg.id %>">masuk</a> atau <a href="/register">daftar</a> dulu sebelum memesan — kredensial VPS dikirim ke email Anda.<% } else { %>Kredensial VPS (IP publik, port SSH kustom, username, password) akan dikirim ke email di atas.<% } %>
+    </p>
+    <div class="field">
+      <label>Durasi (bulan)</label>
+      <select name="months">
+        <% [1,3,6,12].forEach(function (m) { %>
+        <option value="<%= m %>" <%= m === months ? 'selected' : '' %>><%= m %> bulan</option>
+        <% }) %>
+      </select>
+    </div>
+    <div class="field">
+      <label>Custom Domain <span style="color:var(--muted-foreground);font-weight:400">(opsional — kosongkan untuk subdomain otomatis <code>{order_id}.<%= mainDomain %></code>)</span></label>
+      <input type="text" name="customDomain" placeholder="contoh: app-cantik.com">
+    </div>
+    <div class="field">
+      <label>Bukti Transfer QRIS (PNG/JPG/WEBP, maks 2 MB)</label>
+      <input type="file" name="proofImage" accept="image/png,image/jpeg,image/webp" required <%= user ? '' : 'disabled' %>>
+    </div>
+
+    <% if (user) { %>
+      <button class="btn" id="btn-create" type="submit" style="width:100%;padding:.9rem">
+        <span class="spin"></span> 🚀 Buat VPS Sekarang (Instan)
+      </button>
+      <div id="progress-box" style="display:none">
+        <ul class="progress-steps" id="progress-steps">
+          <li data-step="1"><span class="dot"></span> Alokasi IP internal &amp; port SSH…</li>
+          <li data-step="2"><span class="dot"></span> Clone template cloud-init…</li>
+          <li data-step="3"><span class="dot"></span> Resize disk &amp; konfigurasi jaringan…</li>
+          <li data-step="4"><span class="dot"></span> Start VPS &amp; rule NAT…</li>
+          <li data-step="5"><span class="dot"></span> Kirim kredensial via email…</li>
+        </ul>
+      </div>
+    <% } else { %>
+      <button class="btn" type="submit" style="width:100%" disabled>Silakan login dulu</button>
+    <% } %>
+  </form>
+</main>
+
+<script>
+(function () {
+  var f = document.querySelector('form[action*="checkout"]');
+  var btn = document.getElementById("btn-create");
+  var box = document.getElementById("progress-box");
+  var steps = Array.prototype.slice.call(document.querySelectorAll("#progress-steps li"));
+  var timer = null;
+  if (!f || !btn) return;
+  f.addEventListener("submit", function () {
+    btn.classList.add("loading");
+    btn.setAttribute("aria-busy", "true");
+    btn.innerHTML = '<span class="spin"></span> Memproses… mohon tunggu (± 1 menit)';
+    if (box) box.style.display = "block";
+    var idx = 0;
+    function advance() {
+      if (idx > 0 && steps[idx-1]) { steps[idx-1].classList.remove("active"); steps[idx-1].classList.add("done"); }
+      if (idx < steps.length && steps[idx]) steps[idx].classList.add("active");
+      idx++;
+      if (idx > 5) idx = 5;
+    }
+    advance(); // step 1 active immediately
+    timer = setInterval(advance, 9000); // subsequent steps ~ every 9s (clone+resize+start)
+  });
+  window.addEventListener("beforeunload", function () { if (timer) clearInterval(timer); });
+})();
+</script>
+
+<div class="lightbox"><figure><img alt=""><figcaption><span></span><span>klik gambar untuk zoom · ESC tutup</span></figcaption></figure></div>
+
+<%- include('../partials/foot') %>

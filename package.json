@@ -1,0 +1,36 @@
+{
+  "name": "myvps-billing",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Automated Home-Lab VPS Billing & Monitoring on Proxmox baremetal host (Express + Prisma + PostgreSQL + EJS)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "seed": "node prisma/seed.js",
+    "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.11.1",
+    "bcryptjs": "^2.4.3",
+    "compression": "^1.7.5",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^16.4.7",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^6.9.16",
+    "prisma": "^6.11.1",
+    "undici": "^8.12.2",
+    "uuid": "^11.1.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

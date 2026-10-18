@@ -1,0 +1,156 @@
+// =====================================================================
+// MYVPS BILLING & MONITORING — DATABASE SCHEMA (PostgreSQL / Prisma)
+// Fixed architecture constants:
+//   IP pool  : 10.0.0.100 .. 10.0.0.250  (seeded into AvailableIp)
+//   Port pool: 10100 .. 10250            (seeded into AvailablePort)
+//   Template : VM id 100 (cloud-init + openssh-server + user `ubuntu`)
+// =====================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PoolStatus {
+  AVAILABLE
+  USED
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT // created, VPS already running, waiting proof verification
+  ACTIVE          // payment verified by admin
+  REJECTED        // nuclear rollback done (proof invalid / cancelled)
+  EXPIRED         // 24h grace elapsed without valid proof (same rollback path)
+}
+
+// ---------------------------------------------------------------- User
+model User {
+  id           String    @id @default(uuid())
+  fullName     String
+  email        String    @unique
+  passwordHash String // bcrypt hash
+  whatsapp     String?
+  isAdmin      Boolean   @default(false)
+  orders       Order[]
+  sessions     Session[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ------------------------------------------------------------- Package
+model Package {
+  id           String   @id @default(cuid())
+  name         String // e.g. "K-STARTER"
+  vcpu         Int // virtual cores
+  ramMb        Int // RAM in MB
+  diskGb       Int // disk in GB (scsi0 resize target)
+  priceMonthly Decimal  @db.Decimal(12, 2) // IDR
+  isActive     Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  orders       Order[]
+
+  @@map("packages")
+}
+
+// --------------------------------------------------------------- Order
+model Order {
+  id           String      @id @default(uuid()) // also the subdomain host: {order_id}.MAIN_DOMAIN
+  userId       String
+  user         User        @relation(fields: [userId], references: [id])
+  packageId    String
+  package      Package     @relation(fields: [packageId], references: [id])
+  status       OrderStatus @default(PENDING_PAYMENT)
+  months       Int         @default(1)
+  amount       Decimal     @db.Decimal(12, 2) // months * package price
+  // identity: EITHER default subdomain {order_id}.MAIN_DOMAIN OR a user custom domain
+  customDomain String?     @unique
+  proofImage   String? // relative path under uploads/
+  verifiedAt   DateTime?
+  rejectReason String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  vps       OrderVps?
+  invoice   Invoice?
+  revenues  MonthlyRevenueItem[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+// ------------------------------------------------ VPS deployed instance
+model OrderVps {
+  orderId    String   @id
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  vmid       Int      @unique // Proxmox qemu id
+  ipInternal String   @unique // 10.0.0.x  — one row per pool slot
+  portCustom Int      @unique // 10xxx external SSH port
+  osUsername String   @default("ubuntu")
+  osPassword String // plain password injected via cloud-init (needed to email to user)
+  vmStatus   String   @default("unknown") // running | stopped | unknown (Proxmox qemu status)
+  createdAt  DateTime @default(now())
+
+  ipPoolRef   AvailableIp?   @relation("ipRef", fields: [ipInternal], references: [ip])
+  portPoolRef AvailablePort? @relation("portRef", fields: [portCustom], references: [port])
+}
+
+// ------------------------------------------------------- Resource pools
+// A pool slot is lockable: status flips AVAILABLE <-> USED inside the
+// same DB transaction that provisions the VPS (SELECT ... FOR UPDATE).
+model AvailableIp {
+  ip           String     @id // "10.0.0.100"
+  status       PoolStatus @default(AVAILABLE)
+  usedByVmId   String?    @unique @map("used_by_vm_id") // orderId when USED (informational, no FK)
+  orderVpsRefs OrderVps[] @relation("ipRef")
+
+  @@index([status])
+  @@map("available_ip")
+}
+
+model AvailablePort {
+  port         Int        @id // 10100
+  status       PoolStatus @default(AVAILABLE)
+  usedByVmId   String?    @unique @map("used_by_vm_id") // orderId when USED (informational, no FK)
+  orderVpsRefs OrderVps[] @relation("portRef")
+
+  @@index([status])
+  @@map("available_port")
+}
+
+// ------------------------------------------------------------- Invoice
+model Invoice {
+  orderId    String    @id
+  order      Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount     Decimal   @db.Decimal(12, 2)
+  status     Int? // null=pending, 1=verified/valid, -1=rejected/invalid
+  note       String?
+  createdAt  DateTime  @default(now())
+  verifiedAt DateTime?
+  verifiedBy String? // admin user id
+}
+
+// ------------------------------------- Monthly gross revenue (financial)
+model MonthlyRevenueItem {
+  id       String  @id @default(cuid())
+  orderId  String
+  order    Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount   Decimal @db.Decimal(12, 2)
+  monthKey String // "2026-10" — month when the payment was VERIFIED
+
+  @@unique([orderId]) // idempotent per order verification
+  @@map("monthly_revenue")
+}

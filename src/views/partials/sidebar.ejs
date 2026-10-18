@@ -1,0 +1,29 @@
+<aside class="sidebar">
+  <div class="brand"><span class="brand-dot">M</span> MYVPS</div>
+  <nav>
+    <% const isAdminArea = locals.isAdminArea; %>
+    <% if (isAdminArea) { %>
+      <span class="navhead">Administrasi</span>
+      <a href="/admin" class="<%= locals.active === 'admin-home' ? 'active' : '' %>">◧ Host Health</a>
+      <a href="/admin/vps" class="<%= locals.active === 'admin-vps' ? 'active' : '' %>">▦ Manajemen VM</a>
+      <a href="/admin/finance" class="<%= locals.active === 'admin-fin' ? 'active' : '' %>">₽ Verifikasi Keuangan</a>
+      <a href="/admin/packages" class="<%= locals.active === 'admin-pkg' ? 'active' : '' %>">🖉 Paket VPS</a>
+    <% } else { %>
+      <span class="navhead">Client Area</span>
+      <a href="/client" class="<%= locals.active === 'client-home' ? 'active' : '' %>">◧ Dashboard</a>
+      <a href="/" class="">◱ Beli VPS Baru</a>
+    <% } %>
+
+    <span class="navhead">Akun</span>
+    <% if (locals.user && user.isAdmin) { %><a href="/admin">◧ Panel Admin</a><% } %>
+    <a href="<%- locals.user ? '/client' : '/login' %>" class="<%= !locals.isAdminArea && locals.active === 'client-home' ? 'active' : '' %>">☺ <%- user && user.fullName ? user.fullName.split(' ')[0] : 'Masuk' %></a>
+    <a href="/logout">⇄ Keluar</a>
+
+    <div style="margin-top:auto">
+      <button class="btn ghost sm" data-toggle-theme style="width:100%">
+        <span data-theme-icon>☾</span> Ganti Tema
+      </button>
+    </div>
+  </nav>
+  <div class="sidefoot">MYVPS · <%- mainDomain ?? 'vpsrumah.com' %></div>
+</aside>

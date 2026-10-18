@@ -1,0 +1,24 @@
+<%- include('../../partials/head', { bodyClass: 'appwrap', title: 'Manajemen VM' }) %>
+<%- include('../../partials/sidebar', { isAdminArea: true, active: 'admin-vps' }) %>
+
+<main class="main">
+  <div class="pagehead">
+    <div>
+      <h1>Manajemen VM Pelanggan</h1>
+      <p>Status <em>running/stopped</em> ditarik langsung dari Proxmox dan diperbarui tiap 6 detik.</p>
+    </div>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr>
+        <th>VMID</th><th>Nama</th><th>Pemilik</th><th>IP Internal</th><th>Port SSH</th><th>VM Status</th><th>Order Status</th><th>Dibuat</th>
+      </tr></thead>
+      <tbody data-live-rows="/admin/vps/rows">
+        <%- include('../../admin/_vps_rows', { vms }) %>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<%- include('../../partials/foot') %>

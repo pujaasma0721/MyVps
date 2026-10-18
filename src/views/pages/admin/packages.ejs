@@ -1,0 +1,70 @@
+<%- include('../../partials/head', { bodyClass: 'appwrap', title: 'Paket VPS' }) %>
+<%- include('../../partials/sidebar', { isAdminArea: true, active: 'admin-pkg' }) %>
+
+<main class="main">
+  <div class="pagehead">
+    <div>
+      <h1>Paket VPS</h1>
+      <p>CRUD harga komersial dan alokasi resource (vCPU / RAM / Disk).</p>
+    </div>
+  </div>
+
+  <div class="tablewrap" style="margin-bottom:1rem">
+    <table>
+      <thead><tr>
+        <th>Nama</th><th>vCPU</th><th>RAM</th><th>Disk</th><th>Harga/bln</th><th>Status</th><th style="text-align:right">Aksi</th>
+      </tr></thead>
+      <tbody>
+        <% packages.forEach(function (p) { %>
+        <tr>
+          <td><b><%= p.name %></b></td>
+          <td><%= p.vcpu %></td>
+          <td><%= p.ramMb %> MB</td>
+          <td><%= p.diskGb %> GB</td>
+          <td>Rp <%= p.priceMonthly.toLocaleString('id-ID') %></td>
+          <td><%= p.isActive ? '<span class="badge green">AKTIF</span>' : '<span class="badge gray">NONAKTIF</span>' %></td>
+          <td style="text-align:right;white-space:nowrap">
+            <a class="btn ghost sm" href="/admin/packages/<%= p.id %>/edit">🖉 Edit</a>
+            <form method="post" action="/admin/packages/<%= p.id %>/delete" style="display:inline" data-confirm="Hapus paket '<%= p.name %>'?">
+              <button class="btn danger-ghost sm">🗑</button>
+            </form>
+          </td>
+        </tr>
+        <% }) %>
+        <% if (packages.length === 0) { %><tr><td colspan="7" style="text-align:center;color:var(--muted-foreground);padding:2rem">Belum ada paket.</td></tr><% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <% if (editing) { %>
+      <h3>Edit Paket — <%= editing.name %></h3>
+      <form method="post" action="/admin/packages/<%= editing.id %>">
+    <% } else { %>
+      <h3>Tambah Paket Baru</h3>
+      <form method="post" action="/admin/packages">
+    <% } %>
+      <div class="field-row">
+        <div class="field"><label>Nama Paket</label><input type="text" name="name" value="<%= editing ? editing.name : '' %>" required></div>
+        <div class="field"><label>vCPU</label><input type="number" name="vcpu" min="1" value="<%= editing ? editing.vcpu : 2 %>" required></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>RAM (MB)</label><input type="number" name="ramMb" min="512" step="512" value="<%= editing ? editing.ramMb : 2048 %>" required></div>
+        <div class="field"><label>Disk (GB)</label><input type="number" name="diskGb" min="10" value="<%= editing ? editing.diskGb : 40 %>" required></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Harga per Bulan (IDR)</label><input type="number" name="priceMonthly" min="0" value="<%= editing ? Number(editing.priceMonthly) : 50000 %>" required></div>
+        <div class="field">
+          <label>Aktifkan – dijual publik</label>
+          <label style="display:flex;gap:.5rem;align-items:center;font-weight:400">
+            <input type="checkbox" name="isActive" <%= editing && !editing.isActive ? '' : 'checked' %>> Paket tampil di landing page
+          </label>
+        </div>
+      </div>
+      <button class="btn" type="submit"><%= editing ? 'Simpan Perubahan' : 'Tambah Paket' %></button>
+      <% if (editing) { %><a class="btn ghost" style="margin-left:.5rem" href="/admin/packages">Batal</a><% } %>
+    </form>
+  </div>
+</main>
+
+<%- include('../../partials/foot') %>

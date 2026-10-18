@@ -1,0 +1,22 @@
+<% vms.forEach(function (v) { %>
+<tr>
+  <td><code><%= v.vmid %></code></td>
+  <td><b><%= v.name %></b><br><small style="color:var(--muted-foreground)"><code style="border:0;background:none;padding:0;color:inherit"><%= v.orderId.slice(0,8).toUpperCase() %></code></small></td>
+  <td><%= v.owner %><br><small style="color:var(--muted-foreground)"><%= v.email %></small></td>
+  <td><code><%= v.ipInternal %></code></td>
+  <td><code><%= v.portCustom %></code></td>
+  <td>
+    <% if (v.vmStatus === 'running') { %><span class="badge green">● Running</span>
+    <% } else if (v.vmStatus === 'stopped') { %><span class="badge gray">■ Stopped</span>
+    <% } else if (v.vmStatus === 'missing') { %><span class="badge red">MISSING</span>
+    <% } else { %><span class="badge amber">?</span><% } %>
+  </td>
+  <td>
+    <% if (v.orderStatus === 'ACTIVE') { %><span class="badge blue">ACTIVE</span>
+    <% } else if (v.orderStatus === 'PENDING_PAYMENT') { %><span class="badge amber">PENDING</span>
+    <% } else { %><span class="badge red"><%= v.orderStatus %></span><% } %>
+  </td>
+  <td><%= new Date(v.createdAt).toLocaleDateString('id-ID') %></td>
+</tr>
+<% }) %>
+<% if (vms.length === 0) { %><tr><td colspan="8" style="text-align:center;color:var(--muted-foreground);padding:2rem">Belum ada VM pelanggan.</td></tr><% } %>

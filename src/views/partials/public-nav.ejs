@@ -1,0 +1,20 @@
+<header class="pubnav">
+  <div class="inner">
+    <a href="/" class="brand" style="text-decoration:none;color:var(--foreground)">
+      <span class="brand-dot">M</span> MYVPS
+    </a>
+    <div class="links">
+      <a href="/#paket">Paket</a>
+      <% if (locals.user) { %>
+        <a href="/client">Client Area</a>
+        <a href="/logout">Keluar</a>
+      <% } else { %>
+        <a href="/login">Masuk</a>
+        <a class="btn sm" href="/register">Daftar</a>
+      <% } %>
+      <button class="btn ghost sm" data-toggle-theme aria-label="Ganti tema">
+        <span data-theme-icon>☾</span>
+      </button>
+    </div>
+  </div>
+</header>

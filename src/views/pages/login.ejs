@@ -1,0 +1,22 @@
+<%- include('../partials/head', { bodyClass: 'pubwrap', title: 'Masuk' }) %>
+<%- include('../partials/public-nav') %>
+
+<div class="card authbox">
+  <h1>Masuk ke MYVPS</h1>
+  <% if (error) { %><div class="badge red" style="width:100%;padding:.6rem;justify-content:center"><%= error %></div><% } %>
+  <form method="post" action="/login" style="margin-top:1rem">
+    <input type="hidden" name="next" value="<%= next %>">
+    <div class="field">
+      <label for="email">Email</label>
+      <input id="email" type="email" name="email" required autofocus>
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input id="password" type="password" name="password" required>
+    </div>
+    <button class="btn" style="width:100%" type="submit">Masuk</button>
+  </form>
+  <p class="alt">Belum punya akun? <a href="/register">Daftar sekarang</a></p>
+</div>
+
+<%- include('../partials/foot') %>

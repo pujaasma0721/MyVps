@@ -1,0 +1,48 @@
+<%- include('../../partials/head', { bodyClass: 'appwrap', title: 'Host Health' }) %>
+<%- include('../../partials/sidebar', { isAdminArea: true, active: 'admin-home' }) %>
+
+<main class="main">
+  <div class="pagehead">
+    <div>
+      <h1>Kesehatan Host OS (Proxmox)</h1>
+      <p>Sumber data: GET /nodes/<%= (typeof nodeName !== 'undefined' && nodeName) || 'pve' %>/status — diperbarui saat halaman dimuat.</p>
+    </div>
+    <button class="btn ghost sm" onclick="location.reload()">⟳ Refresh</button>
+  </div>
+
+  <div class="stats">
+    <div class="card stat">
+      <div class="label">CPU Usage</div>
+      <div class="value"><%= health.cpuPercent %>%</div>
+      <div class="meter"><span style="width:<%= Math.min(100, health.cpuPercent) %>%"></span></div>
+      <div class="sub">Utilitas semua core</div>
+    </div>
+    <div class="card stat">
+      <div class="label">RAM</div>
+      <div class="value"><%= health.ram.usedGb %> GB</div>
+      <div class="meter"><span style="width:<%= Math.min(100, health.ramPercent) %>%"></span></div>
+      <div class="sub"><%= health.ram.freeGb %> GB free dari <%= health.ram.totalGb %> GB</div>
+    </div>
+    <div class="card stat">
+      <div class="label">SSD</div>
+      <div class="value"><%= health.ssd.usedGb %> GB</div>
+      <div class="meter"><span style="width:<%= Math.min(100, health.ssdPercent) %>%"></span></div>
+      <div class="sub"><%= health.ssd.freeGb %> GB free dari <%= health.ssd.totalGb %> GB</div>
+    </div>
+    <div class="card stat">
+      <div class="label">Uptime Host</div>
+      <div class="value" style="font-size:1.25rem"><%= health.uptime %></div>
+      <div class="sub"><%= ordersActive %> pesanan aktif dari total <%= ordersTotal %> pesanan</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Ringkasan Kapasitas</h3>
+    <p style="color:var(--muted-foreground);font-size:.9rem">
+      Pool IP internal <b>10.0.0.100–10.0.0.250</b> · Port SSH kustom <b>10100–10250</b> ·
+      Template master VM <b>#100</b> (cloud-init + openssh, user <b>ubuntu</b>).
+    </p>
+  </div>
+</main>
+
+<%- include('../../partials/foot') %>

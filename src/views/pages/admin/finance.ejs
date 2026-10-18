@@ -1,0 +1,85 @@
+<%- include('../../partials/head', { bodyClass: 'appwrap', title: 'Verifikasi Keuangan' }) %>
+<%- include('../../partials/sidebar', { isAdminArea: true, active: 'admin-fin' }) %>
+
+<main class="main">
+  <div class="pagehead">
+    <div>
+      <h1>Verifikasi Keuangan</h1>
+      <p>Pratinjau bukti QRIS (klik untuk zoom) · Verify = order Aktif + pembukuan pendapatan bulanan · Reject = <b>rollback total</b>.</p>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:1rem;align-items:start">
+    <div class="card">
+      <h3>Rekap Pendapatan Kotor Bulanan</h3>
+      <% if (chart.length === 0) { %>
+        <p style="color:var(--muted-foreground);font-size:.9rem">Belum ada pendapatan terverifikasi.</p>
+      <% } else { %>
+        <% const max = Math.max.apply(null, chart.map(c => c.total)); %>
+        <div style="display:flex;gap:.6rem;align-items:flex-end;height:160px">
+          <% chart.forEach(function (c) { const h = max ? Math.max(8, Math.round(c.total / max * 130)) : 8; %>
+            <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%">
+              <div style="text-align:center;font-size:.68rem;color:var(--muted-foreground)"><%= (c.total>=1e6? (c.total/1e6).toFixed(1)+'jt' : c.total.toLocaleString('id-ID')) %></div>
+              <div style="background:var(--chart-1);border-radius:6px 6px 0 0;height:<%= h %>px"></div>
+              <div style="text-align:center;font-size:.7rem;color:var(--muted-foreground);margin-top:.3rem"><%= c.month.slice(2) %></div>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+    </div>
+
+    <div class="card">
+      <h3>Konvensi Status Invoice</h3>
+      <ul style="color:var(--muted-foreground);font-size:.88rem;line-height:1.9;margin:0;padding-left:1.2rem">
+        <li><span class="badge amber">PENDING</span> menunggu verifikasi admin</li>
+        <li><span class="badge green">VALID</span> bukti diterima — pelanggan aktif</li>
+        <li><span class="badge red">INVALID</span> ditolak — VPS dihapus permanen (rollback nuklir)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr>
+        <th>Order</th><th>Pelanggan</th><th>Paket</th><th>Nilai</th><th>Bukti</th><th>Status</th><th style="text-align:right">Aksi</th>
+      </tr></thead>
+      <tbody>
+        <% orders.forEach(function (o) { const inv = o.invoice; %>
+        <tr>
+          <td><code><%= o.id.slice(0,8).toUpperCase() %></code><br><small style="color:var(--muted-foreground)"><%= new Date(o.createdAt).toLocaleDateString('id-ID') %></small></td>
+          <td><%= o.user.fullName %><br><small style="color:var(--muted-foreground)"><%= o.user.email %></small></td>
+          <td><%= o.package.name %> × <%= o.months %></td>
+          <td><b>Rp <%= Number(o.amount).toLocaleString('id-ID') %></b></td>
+          <td><%= o.proofImage ? '✔ diunggah' : '— belum' %></td>
+          <td>
+            <% if (!o.proofImage) { %><span class="badge gray">NO PROOF</span>
+            <% } else if (inv && inv.status === 1) { %><span class="badge green">VALID</span>
+            <% } else if (inv && inv.status === -1) { %><span class="badge red">INVALID</span>
+            <% } else if (o.status === 'ACTIVE') { %><span class="badge green">VALID</span>
+            <% } else { %><span class="badge amber">PENDING</span><% } %>
+          </td>
+          <td style="text-align:right;white-space:nowrap">
+            <% if (o.proofImage) { %>
+              <button class="btn ghost sm" data-lightbox="/proofs/<%= o.proofImage.replace('uploads/','') %>" data-caption="Bukti QRIS — <%= o.user.email %>">🔍</button>
+            <% } %>
+            <% if (o.status === 'PENDING_PAYMENT' || (inv && inv.status == null && o.proofImage)) { %>
+              <form method="post" action="/admin/finance/<%= o.id %>/verify" style="display:inline;margin:.15rem" data-confirm="Verifikasi bukti ini sebagai VALID?">
+                <button class="btn sm">✔ Penerima</button>
+              </form>
+              <form method="post" action="/admin/finance/<%= o.id %>/reject" style="display:inline;margin:.15rem">
+                <input type="hidden" name="reason" value="Bukti transfer tidak valid (admin)">
+                <button class="btn danger-ghost sm" data-confirm="REJECT — VPS akan DIHAPUS TOTAL permanen (rollback nuklir). Lanjutkan?">✘ Reject</button>
+              </form>
+            <% } %>
+          </td>
+        </tr>
+        <% }) %>
+        <% if (orders.length === 0) { %><tr><td colspan="7" style="text-align:center;color:var(--muted-foreground);padding:2rem">Belum ada pesanan.</td></tr><% } %>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<div class="lightbox"><figure><img alt=""><figcaption><span></span><span>klik gambar untuk zoom · ESC tutup</span></figcaption></figure></div>
+
+<%- include('../../partials/foot') %>

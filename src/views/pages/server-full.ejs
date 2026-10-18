@@ -1,0 +1,15 @@
+<%- include('../partials/head', { bodyClass: 'pubwrap', title: 'Server Penuh' }) %>
+<%- include('../partials/public-nav') %>
+
+<div class="card authbox" style="text-align:center">
+  <div style="font-size:2.5rem">🏗️</div>
+  <h1>Kapasitas Host Belum Cukup</h1>
+  <p style="color:var(--muted-foreground)">
+    <%= message %><br>
+    Tidak ada VPS yang dibuat — semua slot resource aman. Silakan coba lagi beberapa saat
+    atau pilih paket dengan spesifikasi lebih kecil.
+  </p>
+  <a class="btn" href="/#paket">← Pilih Paket Lain</a>
+</div>
+
+<%- include('../partials/foot') %>

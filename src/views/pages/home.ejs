@@ -1,0 +1,167 @@
+<%- include('../partials/head', { bodyClass: 'pubwrap', title: 'VPS Murah Indonesia — Aktivasi Instan' }) %>
+<link rel="stylesheet" href="/static/css/landing.css?v=2">
+<%- include('../partials/landing-nav') %>
+
+<!-- ================= HERO ala idCloudHost ================= -->
+<section class="hero-pro">
+  <div class="hero-inner">
+    <div>
+      <h1>Server VPS Murah<br>Indonesia</h1>
+      <p class="lead">Layanan Server VPS Indonesia terbaik untuk kebutuhan website dan aplikasi dengan keunggulan:</p>
+      <ul class="checklist">
+        <li><span class="ck">✓</span> Storage NVMe + Processor Xeon</li>
+        <li><span class="ck">✓</span> Cloud-Init otomatis + akses root penuh</li>
+        <li><span class="ck">✓</span> IP publik + port SSH kustom langsung aktif</li>
+        <li><span class="ck">✓</span> Pilih paket sekarang, VPS jadi dalam ±1 menit</li>
+      </ul>
+      <div class="startfrom">Start From</div>
+      <div class="price">Rp <%= Math.min(...packages.map(p => Number(p.priceMonthly))).toLocaleString('id-ID') %><small>/Bulan</small></div>
+      <a class="btn-grad" href="#paket">Selengkapnya</a>
+      <p class="hero-cta-note">Butuh yang Fleksibel? Coba <a href="#paket"><b>Cloud VPS</b></a></p>
+    </div>
+    <div class="server-illu">
+      <%- include('../partials/server-illu') %>
+    </div>
+  </div>
+  <div class="hero-curve">
+    <svg viewBox="0 0 1440 90" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M0 0 C480 90 960 90 1440 0 L1440 90 L0 90 Z" fill="var(--background)"/>
+    </svg>
+  </div>
+</section>
+
+<!-- ================= PAKET ================= -->
+<section id="paket" class="section-pad">
+  <div class="sec-head">
+    <span class="kicker">Harga Transparan</span>
+    <h2>Pilih Paket VPS Anda</h2>
+    <p>Tidak ada biaya tersembunyi. Aktivasi instan setelah checkout — bukti transfer diverifikasi maksimal 24 jam.</p>
+  </div>
+
+  <div class="pkgs-pro">
+    <%
+      const featuredIdx = Math.min(Math.floor((packages.length - 1) / 2), packages.length - 1);
+      packages.forEach(function (p, i) {
+        const cheapest = Number(p.priceMonthly) === Math.min(...packages.map(x => Number(x.priceMonthly)));
+    %>
+      <div class="pkg-pro <%= i === featuredIdx ? 'featured' : '' %>">
+        <div class="pname"><%= p.name %></div>
+        <div class="ptag"><%= cheapest ? 'Paling ekonomis' : 'VPS '+p.vcpu+' core' %></div>
+        <div class="pprice">
+          <span class="cur">Rp</span>
+          <span class="num"><%= p.priceMonthly.toLocaleString('id-ID') %></span>
+          <span class="per">/Bulan</span>
+        </div>
+        <ul class="feat">
+          <li><span class="ck">✓</span> <%= p.vcpu %> vCPU</li>
+          <li><span class="ck">✓</span> <%= (p.ramMb/1024).toFixed(p.ramMb % 1024 ? 1 : 0) %> GB RAM</li>
+          <li><span class="ck">✓</span> <%= p.diskGb %> GB SSD</li>
+          <li><span class="ck">✓</span> 1 IPv4 (NAT) + port SSH kustom</li>
+          <li><span class="ck">✓</span> Subdomain + wildcard SSL</li>
+        </ul>
+        <div class="cta"><a class="btn" style="width:100%" href="/checkout/<%= p.id %>">Pesan Sekarang</a></div>
+      </div>
+    <% }) %>
+  </div>
+</section>
+
+<!-- ================= KEUNGGULAN ================= -->
+<section id="keunggulan" class="section-pad" style="padding-top:0">
+  <div class="sec-head">
+    <span class="kicker">Kenapa MYVPS</span>
+    <h2>Infrastruktur Rumah, Kualitas Datacenter</h2>
+    <p>Dibangun di atas baremetal Proxmox VE dengan otomasi penuh dari cloud-init hingga networking.</p>
+  </div>
+  <div class="why-grid">
+    <div class="card why-card">
+      <div class="ico">⚡</div>
+      <h3>Aktivasi Instan</h3>
+      <p>Setelah checkout, VM di-clone dari template cloud-init, dikonfigurasi IP, dinyalakan — kredensial terkirim ke email Anda.</p>
+    </div>
+    <div class="card why-card">
+      <div class="ico">🔒</div>
+      <h3>Domain + SSL Siap Pakai</h3>
+      <p>Setiap VPS mendapat subdomain default dengan wildcard certificate, atau sambungkan domain sendiri dengan Let's Encrypt otomatis.</p>
+    </div>
+    <div class="card why-card">
+      <div class="ico">🖥️</div>
+      <h3>Remote SSH Aman</h3>
+      <p>Akses SSH lewat port publik kustom ke jaringan internal Anda; rule NAT dibuat dan dibersihkan otomatis oleh sistem.</p>
+    </div>
+    <div class="card why-card">
+      <div class="ico">🧾</div>
+      <h3>Penagihan Transparan</h3>
+      <p>Invoice rapi, bukti transfer QRIS diverifikasi admin, dan pembatalan otomatis membersihkan semua resource Anda.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FAQ singkat ================= -->
+<section id="faq" class="section-pad" style="padding-top:0">
+  <div class="sec-head">
+    <span class="kicker">Bantuan</span>
+    <h2>Pertanyaan Umum</h2>
+  </div>
+  <div class="grid-2" style="max-width:980px;margin:0 auto">
+    <div class="card">
+      <h3>Berapa lama VPS aktif?</h3>
+      <p style="color:var(--muted-foreground);font-size:.9rem">Instan — biasanya di bawah 2 menit sejak checkout. Kredensial dikirim otomatis via email.</p>
+    </div>
+    <div class="card">
+      <h3>Bagaimana verifikasi pembayaran?</h3>
+      <p style="color:var(--muted-foreground);font-size:.9rem">Upload bukti QRIS saat checkout; admin memverifikasi maksimal 24 jam. Bukti tidak valid = penghapusan permanen.</p>
+    </div>
+    <div class="card">
+      <h3>Bisakah pakai domain sendiri?</h3>
+      <p style="color:var(--muted-foreground);font-size:.9rem">Bisa. Dari Client Area, isi domain Anda — SSL Let's Encrypt diterbitkan otomatis via certbot.</p>
+    </div>
+    <div class="card">
+      <h3>Bagaimana koneksi SSH?</h3>
+      <p style="color:var(--muted-foreground);font-size:.9rem">Via IP publik server dan port kustom yang tercantum di detail pesanan: <code>ssh ubuntu@IP -p PORT</code>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= WARNING + FOOTER ================= -->
+<div class="landing-warn">
+  <div class="inner">
+    <span style="font-size:1.2rem">⚠️</span>
+    <span>VPS Anda langsung aktif. Jika dalam 24 jam bukti transfer tidak valid/palsu, sistem akan melakukan penghapusan total secara permanen!</span>
+  </div>
+</div>
+
+<footer class="landing-foot">
+  <div class="cols">
+    <div>
+      <div style="display:flex;align-items:center;gap:.5rem;font-weight:800;font-size:1.15rem;color:var(--foreground)">
+        <svg width="24" height="24" viewBox="0 0 26 26" fill="none" aria-hidden="true"><rect width="26" height="26" rx="7" fill="#245bfa"/><circle cx="13" cy="15" r="5.5" fill="#fff"/><path d="M8.5 8.5A6 6 0 0 1 19 10.7" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+        MYVPS
+      </div>
+      <p style="color:var(--muted-foreground);font-size:.85rem;margin-top:.7rem">Automated home-lab VPS billing &amp; monitoring di atas Proxmox VE — provisioning instan, penagihan transparan.</p>
+    </div>
+    <div>
+      <h4>Layanan</h4>
+      <a href="#paket">Paket VPS</a>
+      <a href="#keunggulan">Keunggulan</a>
+      <a href="/client">Client Area</a>
+    </div>
+    <div>
+      <h4>Bantuan</h4>
+      <a href="#faq">FAQ</a>
+      <a href="/register">Buat Akun</a>
+      <a href="/login">Masuk</a>
+    </div>
+    <div>
+      <h4>Infrastruktur</h4>
+      <a href="/#paket">Node Proxmox VE</a>
+      <a href="/#paket">Pool 10.0.0.100–250</a>
+      <a href="/#paket">Template Cloud-Init #100</a>
+    </div>
+  </div>
+  <div class="inner" style="border-top:1px solid var(--border)">
+    <span>© <%= new Date().getFullYear() %> MYVPS. Semua hak dilindungi.</span>
+    <span>Server VPS murah Indonesia — aktivasi instan.</span>
+  </div>
+</footer>
+
+<%- include('../partials/foot') %>

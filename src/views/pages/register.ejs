@@ -1,0 +1,29 @@
+<%- include('../partials/head', { bodyClass: 'pubwrap', title: 'Daftar' }) %>
+<%- include('../partials/public-nav') %>
+
+<div class="card authbox">
+  <h1>Buat Akun</h1>
+  <% if (errors) { %><div class="badge red" style="width:100%;padding:.6rem;justify-content:center"><%= errors %></div><% } %>
+  <form method="post" action="/register" style="margin-top:1rem">
+    <div class="field">
+      <label>Nama Lengkap</label>
+      <input type="text" name="fullName" value="<%= values.fullName || '' %>" required>
+    </div>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" name="email" value="<%= values.email || '' %>" required>
+    </div>
+    <div class="field">
+      <label>WhatsApp <span style="color:var(--muted-foreground);font-weight:400">(opsional)</span></label>
+      <input type="text" name="whatsapp" value="<%= values.whatsapp || '' %>">
+    </div>
+    <div class="field">
+      <label>Password <span style="color:var(--muted-foreground);font-weight:400">(min. 8 karakter)</span></label>
+      <input type="password" name="password" minlength="8" required>
+    </div>
+    <button class="btn" style="width:100%" type="submit">Daftar</button>
+  </form>
+  <p class="alt">Sudah punya akun? <a href="/login">Masuk</a></p>
+</div>
+
+<%- include('../partials/foot') %>
