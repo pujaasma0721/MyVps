@@ -63,7 +63,15 @@ app.use((req, res, next) => {
   if (!origin) return next(); // non-browser or same-origin GET-style submit
   try {
     const o = new URL(origin);
-    if (o.host === req.headers.host) return next();
+    const reqHost = (req.headers["x-forwarded-host"] || req.headers.host || "").split(",")[0].trim();
+    const oh = o.host.toLowerCase();
+    if (oh === reqHost.toLowerCase()) return next();
+    // dev equivalence: localhost / 127.0.0.1 / ::1 are interchangeable
+    const okPort = o.port || "";
+    const sameDevEnv =
+      ["localhost", "127.0.0.1", "[::1]", "+::1"].some((h) => oh.startsWith(h) || reqHost.startsWith(h)) &&
+      (oh.split(":").pop() || "") === (reqHost.split(":").pop() || "");
+    if (sameDevEnv) return next();
   } catch (_e) { /* fallthrough */ }
   return res.status(403).render("pages/message", {
     title: "Permintaan Ditolak",
