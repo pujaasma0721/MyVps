@@ -67,11 +67,11 @@ app.use((req, res, next) => {
     const oh = o.host.toLowerCase();
     if (oh === reqHost.toLowerCase()) return next();
     // dev equivalence: localhost / 127.0.0.1 / ::1 are interchangeable
-    const okPort = o.port || "";
     const sameDevEnv =
       ["localhost", "127.0.0.1", "[::1]", "+::1"].some((h) => oh.startsWith(h) || reqHost.startsWith(h)) &&
       (oh.split(":").pop() || "") === (reqHost.split(":").pop() || "");
     if (sameDevEnv) return next();
+    console.warn("[csrf-reject] origin=", origin, "reqHost=", reqHost);
   } catch (_e) { /* fallthrough */ }
   return res.status(403).render("pages/message", {
     title: "Permintaan Ditolak",
