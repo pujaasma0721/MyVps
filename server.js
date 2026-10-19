@@ -62,6 +62,16 @@ app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (!origin) return next(); // non-browser or same-origin GET-style submit
   try {
+    // Chrome sends "Origin: null" for sandboxed/redirected form posts. On a
+    // local dev host that is a legitimate browser flow — allow it in dev.
+    if (origin.toLowerCase() === "null") {
+      if (config.env !== "production") return next();
+      return res.status(403).render("pages/message", {
+        title: "Permintaan Ditolak",
+        message: "Permintaan POST lintas-origin (CSRF) diblokir.",
+        user: req.user || null,
+      });
+    }
     const o = new URL(origin);
     const reqHost = (req.headers["x-forwarded-host"] || req.headers.host || "").split(",")[0].trim();
     const oh = o.host.toLowerCase();
@@ -71,8 +81,10 @@ app.use((req, res, next) => {
       ["localhost", "127.0.0.1", "[::1]", "+::1"].some((h) => oh.startsWith(h) || reqHost.startsWith(h)) &&
       (oh.split(":").pop() || "") === (reqHost.split(":").pop() || "");
     if (sameDevEnv) return next();
-    console.warn("[csrf-reject] origin=", origin, "reqHost=", reqHost);
-  } catch (_e) { /* fallthrough */ }
+  } catch (e) {
+    console.warn("[csrf-parse-fail] origin=", origin, "-", e.message);
+  }
+  console.warn("[csrf-reject] origin=", JSON.stringify(origin), "reqHost=", JSON.stringify(req.headers.host));
   return res.status(403).render("pages/message", {
     title: "Permintaan Ditolak",
     message: "Permintaan POST lintas-origin (CSRF) diblokir.",
