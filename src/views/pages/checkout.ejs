@@ -44,7 +44,7 @@
       </div>
     </div>
     <p class="hint" style="color:var(--muted-foreground);font-size:.8rem;margin-top:-.5rem">
-      <% if (!user) { %>Anda harus <a href="/login?next=/checkout/<%= pkg.id %>">masuk</a> atau <a href="/register">daftar</a> dulu sebelum memesan — kredensial VPS dikirim ke email Anda.<% } else { %>Kredensial VPS (IP publik, port SSH kustom, username, password) akan dikirim ke email di atas.<% } %>
+      <% if (!user) { %>Anda harus <a href="/login?next=/checkout/<%= pkg.id %>">masuk</a> atau <a href="/register">daftar</a> dulu sebelum memesan — kredensial VPS dikirim ke email Anda.<% } else { %>Kredensial VPS (alamat akses, username, password) akan dikirim ke email di atas.<% } %>
     </p>
     <div class="field">
       <label>Durasi (bulan)</label>
@@ -55,7 +55,7 @@
       </select>
     </div>
     <div class="field">
-      <label>Custom Domain <span style="color:var(--muted-foreground);font-weight:400">(opsional — kosongkan untuk subdomain otomatis <code>{order_id}.<%= mainDomain %></code>)</span></label>
+      <label>Domain Sendiri <span style="color:var(--muted-foreground);font-weight:400">(opsional — kosongkan untuk alamat web gratis dari kami)</span></label>
       <input type="text" name="customDomain" placeholder="contoh: app-cantik.com">
     </div>
     <div class="field">
@@ -69,11 +69,11 @@
       </button>
       <div id="progress-box" style="display:none">
         <ul class="progress-steps" id="progress-steps">
-          <li data-step="1"><span class="dot"></span> Alokasi IP internal &amp; port SSH…</li>
-          <li data-step="2"><span class="dot"></span> Clone template cloud-init…</li>
-          <li data-step="3"><span class="dot"></span> Resize disk &amp; konfigurasi jaringan…</li>
-          <li data-step="4"><span class="dot"></span> Start VPS &amp; rule NAT…</li>
-          <li data-step="5"><span class="dot"></span> Kirim kredensial via email…</li>
+          <li data-step="1"><span class="dot"></span> Menyiapkan server Anda…</li>
+          <li data-step="2"><span class="dot"></span> Memasang sistem operasi…</li>
+          <li data-step="3"><span class="dot"></span> Mengatur kapasitas &amp; koneksi internet…</li>
+          <li data-step="4"><span class="dot"></span> Menyalakan server…</li>
+          <li data-step="5"><span class="dot"></span> Mengirim kredensial ke email Anda…</li>
         </ul>
       </div>
     <% } else { %>

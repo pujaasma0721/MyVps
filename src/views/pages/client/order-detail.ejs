@@ -22,9 +22,20 @@
 
   <div class="stats">
     <div class="card stat">
-      <div class="label">SSH — IP Publik</div>
-      <div class="value" style="font-size:1.2rem"><%= publicIp %></div>
-      <div class="sub">Port kustom: <code><%= order.vps ? order.vps.portCustom : '—' %></code></div>
+      <div class="label">Alamat Akses SSH</div>
+      <div class="value" style="font-size:1.05rem"><code><%= subDomain %></code></div>
+      <div class="sub">Port akses: <code><%= order.vps ? order.vps.portCustom : '—' %></code> — salin perintah: <code>ssh <%= order.vps ? order.vps.osUsername : 'ubuntu' %>@<%= subDomain %> -p <%= order.vps ? order.vps.portCustom : 'PORT' %></code></div>
+    </div>
+    <div class="card stat" style="grid-column:1/-1">
+      <div class="label">Ingin cukup <code>ssh vps</code> tanpa mengingat port?</div>
+      <div style="width:100%">
+        <p style="font-size:.85rem;color:var(--muted-foreground);margin:.3rem 0">Tempel baris-baris ini sekali saja ke file <code>~/.ssh/config</code> (di Windows: <code>C:\Users\Anda\.ssh\config</code>). Setelah itu cukup jalan: <code>ssh vps-<%= order.id ? order.id.slice(0,8) : 'xxxx' %></code></p>
+<code style="display:block;white-space:pre;overflow-x:auto;background:var(--muted);padding:.7rem;border-radius:.5rem;font-size:.8rem">Host vps-<%= order.id ? order.id.slice(0,8).toLowerCase() : 'xxxx' %>
+    HostName <%= subDomain %>
+    User <%= order.vps ? order.vps.osUsername : 'ubuntu' %>
+    Port <%= order.vps ? order.vps.portCustom : '22' %>
+    IdentitiesOnly yes</code>
+      </div>
     </div>
     <div class="card stat">
       <div class="label">Kredensial SSH</div>
@@ -32,14 +43,14 @@
       <div class="sub">Password dikirim ke email Anda. <a class="btn ghost sm" style="font-size:.75rem" href="/client/order/<%= order.id %>/resend-credentials">✉ Kirim ulang kredensial</a></div>
     </div>
     <div class="card stat">
-      <div class="label">Subdomain Default</div>
+      <div class="label">Alamat Web Gratis</div>
       <div class="value" style="font-size:1rem"><code><%= subDomain %></code></div>
-      <div class="sub">proxy_pass → http://<%= order.vps ? order.vps.ipInternal : '' %>:80 (wildcard cert)</div>
+      <div class="sub">URL web server Anda — HTTPS aktif otomatis</div>
     </div>
     <div class="card stat">
-      <div class="label">Custom Domain</div>
+      <div class="label">Domain Sendiri</div>
       <div class="value" style="font-size:1rem"><%= order.customDomain ? `<code>${order.customDomain}</code>` : '—' %></div>
-      <div class="sub">SSL Let's Encrypt otomatis via certbot</div>
+      <div class="sub">HTTPS aktif otomatis setelah domain dihubungkan</div>
     </div>
   </div>
 
@@ -64,10 +75,10 @@
 
     <div>
       <div class="card">
-        <h3>Tambah Custom Domain</h3>
+        <h3>Tambah Domain Sendiri</h3>
         <p style="color:var(--muted-foreground);font-size:.85rem">
-          Arahkan A record domain Anda ke <b><%= publicIp %></b>, lalu isi di sini.
-          Nginx akan dibuat proxy_pass ke VPS dan sertifikat Let's Encrypt diterbitkan otomatis.
+          Arahkan domain Anda ke alamat <b><%= publicIp %></b> (ikuti panduan penyedia domain Anda), lalu isi di sini.
+          HTTPS akan aktif otomatis tanpa perlu pengaturan teknis.
         </p>
         <form onsubmit="wireDomain(event)">
           <div class="field">
@@ -80,7 +91,7 @@
 
       <div class="card">
         <h3>Koneksi SSH</h3>
-        <pre style="background:var(--surface-2);border-radius:var(--radius);padding:.8rem;overflow-x:auto">ssh <%= order.vps ? order.vps.osUsername : 'user' %>@<%= publicIp %> -p <%= order.vps ? order.vps.portCustom : 22 %></pre>
+        <pre style="background:var(--surface-2);border-radius:var(--radius);padding:.8rem;overflow-x:auto">ssh <%= order.vps ? order.vps.osUsername : 'user' %>@<%= subDomain %> -p <%= order.vps ? order.vps.portCustom : 22 %></pre>
       </div>
     </div>
   </div>

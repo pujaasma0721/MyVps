@@ -62,10 +62,14 @@ app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (!origin) return next(); // non-browser or same-origin GET-style submit
   try {
-    // Chrome sends "Origin: null" for sandboxed/redirected form posts. On a
-    // local dev host that is a legitimate browser flow — allow it in dev.
+    // Chrome sends "Origin: null" for sandboxed/redirected form posts.
+    // Allow it when the browser itself asserts the submit is same-origin
+    // (Sec-Fetch-Site: same-origin) — a hostile cross-site page would send
+    // "cross-site" and stay blocked. Non-browser clients have no Origin at all.
     if (origin.toLowerCase() === "null") {
-      if (config.env !== "production") return next();
+      const site = String(req.headers["sec-fetch-site"] || "").toLowerCase();
+      if (config.env !== "production" || site === "same-origin") return next();
+      console.warn("[csrf-reject] origin=null sec-fetch-site=" + JSON.stringify(site));
       return res.status(403).render("pages/message", {
         title: "Permintaan Ditolak",
         message: "Permintaan POST lintas-origin (CSRF) diblokir.",

@@ -5,38 +5,99 @@
   <div class="pagehead">
     <div>
       <h1>Kesehatan Host OS (Proxmox)</h1>
-      <p>Sumber data: GET /nodes/<%= (typeof nodeName !== 'undefined' && nodeName) || 'pve' %>/status — diperbarui saat halaman dimuat.</p>
+      <p>Node <b><%= health.node || 'aka' %></b> · <%= health.pveVersion || '' %> — data diperbarui otomatis tiap 1 menit.</p>
     </div>
-    <button class="btn ghost sm" onclick="location.reload()">⟳ Refresh</button>
+    <div style="display:flex;gap:.5rem;align-items:center">
+      <span id="autoref-status" style="font-size:.8rem;color:var(--muted-foreground)">⟳ auto 60s</span>
+      <button class="btn ghost sm" onclick="refreshNow()">⟳ Refresh</button>
+    </div>
   </div>
 
+  <!-- ===== Baris 1: CPU / RAM / SSD root / Uptime ===== -->
   <div class="stats">
     <div class="card stat">
       <div class="label">CPU Usage</div>
-      <div class="value"><%= health.cpuPercent %>%</div>
-      <div class="meter"><span style="width:<%= Math.min(100, health.cpuPercent) %>%"></span></div>
-      <div class="sub">Utilitas semua core</div>
+      <div class="value" id="cpu-val"><%= health.cpu.percent %>%</div>
+      <div class="meter"><span id="cpu-bar" style="width:<%= Math.min(100, health.cpu.percent) %>%"></span></div>
+      <div class="sub" id="cpu-sub"><%= health.cpu.cores %> core · load 5m <%= health.cpu.load.l5 %></div>
     </div>
     <div class="card stat">
-      <div class="label">RAM</div>
-      <div class="value"><%= health.ram.usedGb %> GB</div>
-      <div class="meter"><span style="width:<%= Math.min(100, health.ramPercent) %>%"></span></div>
-      <div class="sub"><%= health.ram.freeGb %> GB free dari <%= health.ram.totalGb %> GB</div>
+      <div class="label">RAM Host</div>
+      <div class="value" id="ram-val"><%= health.ram.usedGb %> GB</div>
+      <div class="meter"><span id="ram-bar" style="width:<%= Math.min(100, health.ram.percent) %>%"></span></div>
+      <div class="sub" id="ram-sub"><%= health.ram.freeGb %> GB free dari <%= health.ram.totalGb %> GB<%= health.ram.swapTotalGb ? ' · swap ' + health.ram.swapUsedGb + '/' + health.ram.swapTotalGb + ' GB' : '' %></div>
     </div>
     <div class="card stat">
-      <div class="label">SSD</div>
-      <div class="value"><%= health.ssd.usedGb %> GB</div>
-      <div class="meter"><span style="width:<%= Math.min(100, health.ssdPercent) %>%"></span></div>
-      <div class="sub"><%= health.ssd.freeGb %> GB free dari <%= health.ssd.totalGb %> GB</div>
+      <div class="label">SSD Host (root)</div>
+      <div class="value" id="ssd-val"><%= health.rootfs.usedGb %> GB</div>
+      <div class="meter"><span id="ssd-bar" style="width:<%= Math.min(100, health.rootfs.percent) %>%"></span></div>
+      <div class="sub" id="ssd-sub"><%= health.rootfs.freeGb %> GB free dari <%= health.rootfs.totalGb %> GB</div>
     </div>
     <div class="card stat">
       <div class="label">Uptime Host</div>
-      <div class="value" style="font-size:1.25rem"><%= health.uptime %></div>
-      <div class="sub"><%= ordersActive %> pesanan aktif dari total <%= ordersTotal %> pesanan</div>
+      <div class="value" id="uptime-val" style="font-size:1.25rem"><%= health.uptime %></div>
+      <div class="sub" id="orders-sub"><%= ordersActive %> pesanan aktif dari total <%= ordersTotal %> pesanan</div>
     </div>
   </div>
 
-  <div class="card">
+  <!-- ===== Baris 2: Suhu / Storage VM / VM running ===== -->
+  <div class="stats" style="margin-top:1rem">
+    <div class="card stat">
+      <div class="label">Suhu System (thermal zone)</div>
+      <div class="value" id="sys-temp-val">—</div>
+      <div class="meter"><span id="sys-temp-bar" style="width:0%"></span></div>
+      <div class="sub" id="sys-temp-sub">membaca /sys/class/thermal…</div>
+    </div>
+    <div class="card stat">
+      <div class="label">Suhu Processor (tertinggi)</div>
+      <div class="value" id="cpu-temp-val">—</div>
+      <div class="meter"><span id="cpu-temp-bar" style="width:0%"></span></div>
+      <div class="sub" id="cpu-temp-sub">membaca /sys/class/hwmon…</div>
+    </div>
+    <div class="card stat">
+      <div class="label">Storage VM (allocated)</div>
+      <div class="value" id="vmdisk-val">—</div>
+      <div class="meter"><span id="vmdisk-bar" style="width:0%"></span></div>
+      <div class="sub" id="vmdisk-sub">—</div>
+    </div>
+    <div class="card stat">
+      <div class="label">VM Customer Aktif</div>
+      <div class="value" id="vmcount-val" style="font-size:1.25rem">—</div>
+      <div class="sub" id="vmcount-sub">—</div>
+    </div>
+  </div>
+
+  <!-- ===== Riwayat CPU host (grafik mini) ===== -->
+  <div class="card" style="margin-top:1rem">
+    <h3>Riwayat CPU Host (10 titik terakhir, sampling 60 dtk)</h3>
+    <canvas id="cpu-chart" width="900" height="160" style="width:100%;height:160px"></canvas>
+  </div>
+
+  <!-- ===== Kartu per VM Customer ===== -->
+  <div class="card" style="margin-top:1rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+      <h3 style="margin:0">VM Customer — detail per VPS</h3>
+      <span style="font-size:.8rem;color:var(--muted-foreground)">metrik live dari Proxmox · grafik sampling 60 dtk</span>
+    </div>
+  </div>
+  <div class="stats" id="vm-cards" style="margin-top:.5rem;grid-template-columns:repeat(auto-fill,minmax(340px,1fr))">
+    <% if (!health.customerVms || !health.customerVms.length) { %>
+      <div class="card stat" style="grid-column:1/-1;text-align:center;color:var(--muted-foreground)">
+        Belum ada VM customer.
+      </div>
+    <% } %>
+  </div>
+
+  <!-- ===== Tabel suhu detail ===== -->
+  <div class="card" style="margin-top:1rem">
+    <h3>Detail Sensor Suhu</h3>
+    <table style="width:100%;font-size:.9rem" id="thermal-table">
+      <thead><tr><th style="text-align:left">Sensor</th><th style="text-align:right">Suhu (°C)</th></tr></thead>
+      <tbody><tr><td colspan="2" style="color:var(--muted-foreground)">Memuat…</td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="card" style="margin-top:1rem">
     <h3>Ringkasan Kapasitas</h3>
     <p style="color:var(--muted-foreground);font-size:.9rem">
       Pool IP internal <b>10.0.0.100–10.0.0.250</b> · Port SSH kustom <b>10100–10250</b> ·
@@ -44,5 +105,239 @@
     </p>
   </div>
 </main>
+
+<script>
+(function(){
+  var MAX_POINTS = 10;
+
+  function setText(id, v) { var el = document.getElementById(id); if (el) el.textContent = v; }
+  function setBar(id, pct) { var el = document.getElementById(id); if (el) el.style.width = Math.max(0, Math.min(100, pct)) + "%"; }
+  function fmtT(c) { return (c === null || c === undefined) ? "—" : c + "°C"; }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+  function tempColor(c) {
+    if (c === null || c === undefined) return "var(--muted-foreground)";
+    if (c >= 75) return "#e0483e";
+    if (c >= 60) return "#e0a13e";
+    return "#2ea44f";
+  }
+  function pctColor(p) {
+    if (p >= 90) return "#e0483e";
+    if (p >= 70) return "#e0a13e";
+    return "#245bfa";
+  }
+
+  /* ---------- grafik generik (garis) ---------- */
+  function drawLine(canvasId, seriesArr, maxPct) {
+    var c = document.getElementById(canvasId); if (!c) return;
+    var ctx = c.getContext("2d");
+    var w = c.width, h = c.height;
+    ctx.clearRect(0, 0, w, h);
+    ctx.strokeStyle = "rgba(125,125,140,.25)"; ctx.lineWidth = 1;
+    for (var g = 0; g <= 4; g++) {
+      var y = h - (g / 4) * (h - 10);
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+      ctx.fillStyle = "rgba(125,125,140,.8)"; ctx.font = "9px sans-serif";
+      ctx.fillText(((g * maxPct) / 4).toFixed(0) + "%", 2, y - 2);
+    }
+    if (seriesArr.every(function (s) { return s.data.length < 2; })) {
+      ctx.fillStyle = "rgba(125,125,140,.9)"; ctx.font = "11px sans-serif";
+      ctx.fillText("Mengumpulkan data…", 30, h / 2);
+      return;
+    }
+    var colors = ["#245bfa", "#e0a13e"];
+    seriesArr.forEach(function (s, si) {
+      if (s.data.length < 2) return;
+      ctx.strokeStyle = s.color || colors[si % colors.length]; ctx.lineWidth = 2; ctx.beginPath();
+      var cnt = s.data.length;
+      s.data.forEach(function (v, i) {
+        var x = w - (cnt - 1 - i) * (w / (MAX_POINTS - 1));
+        var y = h - (v / 100) * (h - 10);
+        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      });
+      ctx.stroke();
+    });
+  }
+
+  var hostHistory = [];
+  // per-vmid: {cpu:[], ram:[]}
+  var vmHistories = {};
+
+  /* ---------- kartu VM ---------- */
+  function vmCardHtml(v) {
+    var m = v.metrics;
+    var body;
+    if (v.status === "running" && m) {
+      body =
+        '<div class="stat-row" style="display:flex;gap:.75rem;flex-wrap:wrap;font-size:.82rem;color:var(--muted-foreground)">'
+        + '<span>⏱ uptime <b>' + esc(m.uptime || "—") + '</b></span>'
+        + '<span>🧠 ' + (m.cpuCoresAlloc || (v.spec && v.spec.vcpu) || "?") + ' vCPU</span>'
+        + '</div>'
+        + '<div style="margin-top:.6rem"><div style="font-size:.78rem;color:var(--muted-foreground)">CPU ' + m.cpuPercent + '% dari ' + ((v.spec && v.spec.vcpu) || m.cpuCoresAlloc || '?') + ' vCPU</div>'
+        + '<div class="meter"><span style="width:' + Math.min(100, m.cpuPercent) + '%;background:' + pctColor(m.cpuPercent) + '"></span></div></div>'
+        + '<div style="margin-top:.6rem"><div style="font-size:.78rem;color:var(--muted-foreground)">RAM ' + m.ramUsedGb + ' / ' + m.ramTotalGb + ' GB (' + m.ramPercent + '%)</div>'
+        + '<div class="meter"><span style="width:' + Math.min(100, m.ramPercent) + '%;background:' + pctColor(m.ramPercent) + '"></span></div></div>'
+        + '<div style="margin-top:.6rem"><div style="font-size:.78rem;color:var(--muted-foreground)">Storage ' + m.diskUsedGb + ' / ' + m.diskTotalGb + ' GB (' + m.diskPercent + '%)</div>'
+        + '<div class="meter"><span style="width:' + Math.min(100, m.diskPercent) + '%;background:' + pctColor(m.diskPercent) + '"></span></div></div>';
+    } else {
+      var why = v.status === "stopped" ? "VM tidak berjalan" : (v.status === "missing" ? "VM tidak ditemukan di node ini (dihapus/dipindah)" : "status tidak diketahui");
+      body =
+        '<div style="font-size:.85rem;color:var(--muted-foreground)">' + why + '</div>'
+        + (v.spec ? '<div style="margin-top:.6rem;font-size:.82rem">Alokasi sesuai paket: <b>' + esc(v.spec.vcpu) + ' vCPU · ' + esc(v.spec.ramGb) + ' GB RAM · ' + esc(v.spec.diskGb) + ' GB SSD</b></div>' : '');
+    }
+    return '' +
+      '<div class="card stat" data-vmid="' + v.vmid + '">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center">'
+      + '<div><div class="label">' + esc(v.name) + ' · <code>VM ' + v.vmid + '</code></div>'
+      + '<div style="font-size:.8rem;color:var(--muted-foreground)">' + esc(v.owner) + '</div></div>'
+      + '<span class="badge ' + (v.status === "running" ? "green" : (v.status === "stopped" ? "gray" : "amber")) + '">' + esc(v.status) + '</span>'
+      + '</div>'
+      + '<div style="margin-top:.5rem">' + body + '</div>'
+      + '<div style="margin-top:.7rem">'
+      + '<div style="font-size:.78rem;color:var(--muted-foreground)">Grafik CPU &amp; RAM (sampling 60 dtk)</div>'
+      + '<canvas class="vm-chart" id="vm-chart-' + v.vmid + '" width="560" height="120" style="width:100%;height:120px"></canvas>'
+      + '<div style="display:flex;gap:1rem;font-size:.72rem;color:var(--muted-foreground);margin-top:.2rem">'
+      + '<span><span style="display:inline-block;width:10px;height:3px;background:#245bfa;vertical-align:middle"></span> CPU</span>'
+      + '<span><span style="display:inline-block;width:10px;height:3px;background:#e0a13e;vertical-align:middle"></span> RAM</span>'
+      + '</div></div>'
+      + '</div>';
+  }
+
+  function renderVmCards(customerVms) {
+    var wrap = document.getElementById("vm-cards"); if (!wrap) return;
+    // Re-render penuh (kartu sedikit, murah). Pertahankan riwayat per vmid.
+    wrap.innerHTML = customerVms.map(vmCardHtml).join("") ||
+      '<div class="card stat" style="grid-column:1/-1;text-align:center;color:var(--muted-foreground)">Belum ada VM customer.</div>';
+    // gambar ulang grafiknya
+    customerVms.forEach(function (v) {
+      var hist = vmHistories[v.vmid] || { cpu: [], ram: [] };
+      drawLineGeneric("vm-chart-" + v.vmid, hist);
+    });
+  }
+
+  function drawLineGeneric(canvasId, hist) {
+    var q = document.querySelector('canvas.vm-chart[data-vmid="' + canvasId.replace("vm-chart-", "") + '"]');
+    if (!q) return;
+    var ctx = q.getContext("2d");
+    var w = q.width, h = q.height;
+    ctx.clearRect(0, 0, w, h);
+    ctx.strokeStyle = "rgba(125,125,140,.25)"; ctx.lineWidth = 1;
+    for (var g = 0; g <= 4; g++) {
+      var y = h - (g / 4) * (h - 10);
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+    }
+    if (hist.cpu.length < 2) {
+      ctx.fillStyle = "rgba(125,125,140,.9)"; ctx.font = "10px sans-serif";
+      ctx.fillText("Mengumpulkan data… (" + hist.cpu.length + "/" + MAX_POINTS + ")", 20, h / 2);
+      return;
+    }
+    var series = [ { data: hist.cpu, color: "#245bfa" }, { data: hist.ram, color: "#e0a13e" } ];
+    series.forEach(function (s) {
+      ctx.strokeStyle = s.color; ctx.lineWidth = 2; ctx.beginPath();
+      s.data.forEach(function (val, i) {
+        var x = w - (s.data.length - 1 - i) * (w / (MAX_POINTS - 1));
+        var y = h - (val / 100) * (h - 10);
+        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      });
+      ctx.stroke();
+    });
+  }
+
+  function renderThermalTable(thermals) {
+    var tb = document.querySelector("#thermal-table tbody");
+    if (!tb) return;
+    tb.innerHTML = thermals.length
+      ? thermals.map(function (t) { return "<tr><td>" + esc(t.label) + "</td><td style='text-align:right'><b>" + t.tempC + "°C</b></td></tr>"; }).join("")
+      : "<tr><td colspan='2' style='color:var(--muted-foreground)'>Sensor suhu tidak tersedia</td></tr>";
+  }
+
+  function applyData(d) {
+    // HOST cards
+    setText("cpu-val", d.cpu.percent + "%"); setBar("cpu-bar", d.cpu.percent);
+    var el = document.getElementById("cpu-sub");
+    if (el) el.textContent = d.cpu.cores + " core · load 1m " + d.cpu.load.l1 + " / 5m " + d.cpu.load.l5 + " / 15m " + d.cpu.load.l15;
+    setText("ram-val", d.ram.usedGb + " GB"); setBar("ram-bar", d.ram.percent);
+    setText("ram-sub", d.ram.freeGb + " GB free dari " + d.ram.totalGb + " GB" + (d.ram.swapTotalGb ? " · swap " + d.ram.swapUsedGb + "/" + d.ram.swapTotalGb + " GB" : ""));
+    setText("ssd-val", d.rootfs.usedGb + " GB"); setBar("ssd-bar", d.rootfs.percent);
+    setText("ssd-sub", d.rootfs.freeGb + " GB free dari " + d.rootfs.totalGb + " GB");
+    setText("uptime-val", d.uptime);
+
+    // Suhu
+    var cpuKeys = /coretemp|k10temp|cpu|package|tctl|pkg/i;
+    var sysKeys = /acpitz|motherboard|board|pch|system|nct/i;
+    var cpuT = null, sysT = null;
+    d.thermals.forEach(function (t) {
+      if (cpuT === null && cpuKeys.test(t.label)) cpuT = t.tempC;
+      if (sysT === null && sysKeys.test(t.label)) sysT = t.tempC;
+    });
+    if (sysT === null && d.thermals.length) sysT = d.thermals[d.thermals.length - 1].tempC;
+    setText("cpu-temp-val", fmtT(cpuT)); setBar("cpu-temp-bar", cpuT || 0);
+    var cb = document.getElementById("cpu-temp-bar"); if (cb) cb.style.background = tempColor(cpuT);
+    setText("cpu-temp-sub", cpuT !== null ? "tertinggi dari sensor CPU" : "sensor CPU tidak terbaca");
+    setText("sys-temp-val", fmtT(sysT)); setBar("sys-temp-bar", sysT || 0);
+    var sb = document.getElementById("sys-temp-bar"); if (sb) sb.style.background = tempColor(sysT);
+    setText("sys-temp-sub", sysT !== null ? "ACPI/thermal zone system" : "tidak ada sensor system");
+
+    setText("vmdisk-val", d.vmsDisk.usedGb + " GB"); setBar("vmdisk-bar", d.vmsDisk.percent);
+    setText("vmdisk-sub", d.vmsDisk.availableGb + " GB tersedia dari total alokasi " + d.vmsDisk.totalGb + " GB");
+
+    setText("vmcount-val", d.kvms.running + " jalan / " + d.kvms.total + " total");
+    var running = d.customerVms.filter(function (v) { return v.status === "running"; }).length;
+    setText("vmcount-sub", "customer: " + running + " running dari " + d.customerVms.length + " VM terdaftar");
+
+    // riwayat host
+    hostHistory.push(d.cpu.percent); if (hostHistory.length > MAX_POINTS) hostHistory.shift();
+    drawHostChart();
+
+    // riwayat + kartu VM
+    d.customerVms.forEach(function (v) {
+      var hist = vmHistories[v.vmid] || (vmHistories[v.vmid] = { cpu: [], ram: [] });
+      if (v.metrics) {
+        hist.cpu.push(v.metrics.cpuPercent); if (hist.cpu.length > MAX_POINTS) hist.cpu.shift();
+        hist.ram.push(v.metrics.ramPercent); if (hist.ram.length > MAX_POINTS) hist.ram.shift();
+      }
+    });
+    renderVmCards(d.customerVms);
+    renderThermalTable(d.thermals);
+  }
+
+  function drawHostChart() {
+    var c = document.getElementById("cpu-chart"); if (!c) return;
+    var ctx = c.getContext("2d");
+    var w = c.width, h = c.height;
+    ctx.clearRect(0, 0, w, h);
+    ctx.strokeStyle = "rgba(125,125,140,.25)"; ctx.lineWidth = 1;
+    for (var g = 0; g <= 4; g++) {
+      var y = h - (g / 4) * (h - 20) - 10;
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+      ctx.fillStyle = "rgba(125,125,140,.8)"; ctx.font = "10px sans-serif";
+      ctx.fillText((g * 25) + "%", 4, y - 3);
+    }
+    if (hostHistory.length < 2) {
+      ctx.fillStyle = "rgba(125,125,140,.9)"; ctx.font = "12px sans-serif";
+      ctx.fillText("Mengumpulkan data… (" + hostHistory.length + "/" + MAX_POINTS + ")", 20, h / 2);
+      return;
+    }
+    var step = w / (MAX_POINTS - 1);
+    ctx.strokeStyle = "#245bfa"; ctx.lineWidth = 2; ctx.beginPath();
+    hostHistory.forEach(function (p, i) {
+      var x = w - (hostHistory.length - 1 - i) * step;
+      var y = h - 10 - (p / 100) * (h - 20);
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    });
+    ctx.stroke();
+  }
+
+  function fetchHealth() {
+    fetch("/admin/health-data", { credentials: "same-origin", headers: { Accept: "application/json" } })
+      .then(function (r) { if (!r.ok) throw 0; return r.json(); })
+      .then(applyData)
+      .catch(function () { setText("autoref-status", "⟳ gagal memuat ulang data"); });
+  }
+  window.refreshNow = fetchHealth;
+  fetchHealth();
+  setInterval(fetchHealth, 60000);
+})();
+</script>
 
 <%- include('../../partials/foot') %>

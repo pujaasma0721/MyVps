@@ -139,23 +139,23 @@ async function provisionInstantOrder({ userId, packageId, months, customDomain, 
 }
 
 async function sendCredentialsEmail(order, { publicIp, port, subdomain, vmPassword, pkg }) {
+  const host = subdomain; // per-order hostname: {order_id}.MAIN_DOMAIN — resolve ke IP publik (wildcard DNS-only)
   const text =
     `Terima kasih telah membeli ${pkg.name} di MYVPS.\n\n` +
     `Detail VPS Anda:\n` +
-    `  - IP Publik (NAT): ${publicIp}\n` +
+    `  - Server Anda (punya domain sendiri): ${host}\n` +
     `  - Port SSH Kustom: ${port}\n` +
     `  - Username: ${C.VM_USER}\n` +
     `  - Password : ${vmPassword}\n\n` +
-    `Subdomain default: ${subdomain}\n` +
-    `SSH: ssh ${C.VM_USER}@${publicIp} -p ${port}\n\n` +
+    `SSH: ssh ${C.VM_USER}@${host} -p ${port}\n\n` +
     `PENTING: ${C.WARNING_24H_TEXT}\n`;
   const html =
     `<p>Terima kasih telah membeli <b>${pkg.name}</b> di MYVPS.</p>` +
-    `<ul><li>IP Publik: <b>${publicIp}</b></li>` +
+    `<ul><li>Server Anda: <b>${host}</b></li>` +
     `<li>Port SSH Kustom: <b>${port}</b></li>` +
     `<li>Username: <b>${C.VM_USER}</b></li>` +
     `<li>Password: <b>${vmPassword}</b></li></ul>` +
-    `<p>Subdomain default: <code>${subdomain}</code></p>` +
+    `<p>SSH: <code>ssh ${C.VM_USER}@${host} -p ${port}</code></p>` +
     `<p><b>PENTING:</b> ${C.WARNING_24H_TEXT}</p>`;
   await emailer.sendMail({ to: order.user.email, subject: `Aktivasi VPS — ${order.id.slice(0, 8).toUpperCase()}`, text, html });
   // Credentials are now in the owner's mailbox; wipe the plaintext copy from RAM.

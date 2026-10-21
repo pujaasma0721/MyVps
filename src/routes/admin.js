@@ -6,7 +6,7 @@
 const express = require("express");
 const prisma = require("../lib/prisma");
 const { requireAdmin } = require("../middleware/auth");
-const { hostHealth, customerVmsLive } = require("../services/monitoring");
+const { hostHealth, customerVmsLive, adminHealth } = require("../services/monitoring");
 const { nucleusRollback } = require("../services/nucleus");
 const { verifyInvoice } = require("../services/finance");
 
@@ -16,12 +16,21 @@ router.use(requireAdmin);
 // ---- Dashboard: Host OS health -----------------------------------------
 router.get("/", async (req, res, next) => {
   try {
-    const health = await hostHealth();
+    const health = await adminHealth();
     const [{ count: ordersActive } = { count: 0 }, { count: ordersTotal } = { count: 0 }] = await Promise.all([
       prisma.order.count({ where: { status: "ACTIVE" } }),
       prisma.order.count(),
     ]);
     res.render("pages/admin/dashboard", { title: "Admin — Host Health", health, ordersActive, ordersTotal, user: req.user });
+  } catch (e) { next(e); }
+});
+
+// JSON snapshot for the auto-refresh dashboard (same data as GET /admin)
+router.get("/health-data", async (req, res, next) => {
+  try {
+    const data = await adminHealth();
+    res.set("Cache-Control", "no-store");
+    res.json(data);
   } catch (e) { next(e); }
 });
 

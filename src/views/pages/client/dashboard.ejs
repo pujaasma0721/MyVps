@@ -38,7 +38,7 @@
               <% } else if (o.status === 'EXPIRED') { %><span class="badge red">Expired</span>
               <% } else { %><span class="badge red">Rejected</span><% } %>
             </td>
-            <td><%= o.vps ? `<code>${publicIp || '—'}:${o.vps.portCustom}</code>` : '—' %></td>
+            <td><%= o.vps ? `<code>${o.id}.mystorage.biz.id:${o.vps.portCustom}</code>` : '—' %></td>
             <td><%= new Date(o.createdAt).toLocaleDateString('id-ID') %></td>
             <td style="text-align:right"><a class="btn ghost sm" href="/client/order/<%= o.id %>">Detail →</a></td>
           </tr>
