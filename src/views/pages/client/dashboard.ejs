@@ -4,43 +4,52 @@
 <main class="main">
   <div class="pagehead">
     <div>
-      <h1>Selamat datang, <%= user.fullName.split(' ')[0] %></h1>
-      <p>Semua VPS milik Anda dalam satu tempat.</p>
+      <h1>Selamat datang, <%= user.fullName.split(' ')[0] %> 👋</h1>
+      <p>Semua VPS milik Anda dalam satu tempat — status, akses SSH, dan langganan.</p>
     </div>
     <a class="btn" href="/#paket">+ VPS Baru</a>
   </div>
 
-  <div class="banner-warning" style="margin-bottom:1.25rem">
+  <div class="banner-warning" style="margin-bottom:1.4rem">
     <span class="big">⚠</span><span><%= warningText %></span>
   </div>
 
   <% if (orders.length === 0) { %>
-    <div class="card" style="text-align:center;padding:3rem">
-      <div style="font-size:2.4rem;">🖥️</div>
-      <h3 style="margin-top:.5rem">Belum ada VPS</h3>
-      <p style="color:var(--muted-foreground)">Pilih paket untuk membuat VPS pertama Anda — prosesnya instan.</p>
+    <div class="card empty-state">
+      <div class="glyph">🖥️</div>
+      <h3>Belum ada VPS</h3>
+      <p>Pilih paket untuk membuat VPS pertama Anda — pembayaran QRIS, verifikasi manual, provisioning instan.</p>
       <a class="btn" href="/#paket">Lihat Paket</a>
     </div>
   <% } else { %>
     <div class="tablewrap">
       <table>
         <thead><tr>
-          <th>ID</th><th>Paket</th><th>Status</th><th>SSH (publik)</th><th>Tanggal</th><th></th>
+          <th>ID Order</th><th>Paket</th><th>Status</th><th>Akses SSH Publik</th><th>Masa Aktif</th><th></th>
         </tr></thead>
         <tbody>
         <% orders.forEach(function (o) { %>
           <tr>
             <td><code><%= o.id.slice(0,8).toUpperCase() %></code></td>
-            <td><b><%= o.package.name %></b><br><small style="color:var(--muted-foreground)"><%= o.package.vcpu %> vCPU / <%= o.package.ramMb %>MB / <%= o.package.diskGb %>GB</small></td>
+            <td class="pkg-cell"><b><%= o.package.name %></b> <% if (o.package.kind === 'LXC') { %><span class="badge amber">LXC</span><% } else { %><span class="badge blue">KVM</span><% } %><br><small><%= o.package.vcpu %> vCPU · <%= o.package.ramMb %> MB RAM · <%= o.package.diskGb %> GB SSD</small></td>
             <td>
-              <% if (o.status === 'ACTIVE') { %><span class="badge green">Active</span>
-              <% } else if (o.status === 'PENDING_PAYMENT') { %><span class="badge amber">Menunggu Verifikasi</span>
-              <% } else if (o.status === 'EXPIRED') { %><span class="badge red">Expired</span>
-              <% } else { %><span class="badge red">Rejected</span><% } %>
+              <% if (o.status === 'ACTIVE') { %><span class="badge green">● Aktif</span>
+              <% } else if (o.status === 'PENDING_PAYMENT') { %><span class="badge amber">◐ Menunggu Verifikasi</span>
+              <% } else if (o.status === 'EXPIRED') { %><span class="badge red">○ Expired</span>
+              <% } else { %><span class="badge red">✕ Rejected</span><% } %>
             </td>
             <td><%= o.vps ? `<code>${o.id}.mystorage.biz.id:${o.vps.portCustom}</code>` : '—' %></td>
-            <td><%= new Date(o.createdAt).toLocaleDateString('id-ID') %></td>
-            <td style="text-align:right"><a class="btn ghost sm" href="/client/order/<%= o.id %>">Detail →</a></td>
+            <td>
+              <% if ((o.status === 'ACTIVE') && o.expiresAt) {
+                   const days = Math.ceil((new Date(o.expiresAt) - Date.now()) / 86400000);
+              %>
+                <b><%= new Date(o.expiresAt).toLocaleDateString('id-ID',{ day:'numeric', month:'short', year:'numeric' }) %></b><br>
+                <small style="color:<%= days <= 7 ? '#c2410c' : 'var(--muted-foreground)' %>"><%= days > 0 ? days + ' hari lagi' : 'sudah lewat' %></small>
+              <% } else { %>
+                <small style="color:var(--muted-foreground)"><%= o.status === 'PENDING_PAYMENT' ? 'mulai saat diverifikasi' : '—' %></small>
+              <% } %>
+            </td>
+            <td style="text-align:right"><a class="btn ghost sm rowlink" href="/client/order/<%= o.id %>">Detail →</a></td>
           </tr>
         <% }) %>
         </tbody>

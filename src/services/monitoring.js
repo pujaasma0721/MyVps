@@ -48,10 +48,11 @@ async function customerVmsLive() {
   });
   const live = await Promise.all(
     rows.map(async (r) => {
+      const kind = r.order.package?.kind === "LXC" ? "LXC" : "KVM";
       let status = "unknown";
       let metrics = null;
       try {
-        const st = await proxmox.vmStatus(r.vmid);
+        const st = await proxmox.guestStatus(kind, r.vmid);
         status = st ? st.status : "missing";
         // Live utilization (only meaningful while running)
         if (st && status === "running") {
@@ -77,6 +78,7 @@ async function customerVmsLive() {
       return {
         orderId: r.orderId,
         vmid: r.vmid,
+        kind,
         name: r.order.package.name,
         owner: r.order.user.fullName,
         email: r.order.user.email,
@@ -85,6 +87,7 @@ async function customerVmsLive() {
         vmStatus: status,
         orderStatus: r.order.status,
         createdAt: r.order.createdAt,
+        expiresAt: r.order.expiresAt,
         metrics,
         spec: {
           vcpu: r.order.package.vcpu,
@@ -163,6 +166,8 @@ async function adminHealth() {
   // Visitor VMs on the node (template + others via Proxmox API, not DB)
   let qemus = [];
   try { qemus = await proxmox.request("GET", `/nodes/${NODE()}/qemu`) || []; } catch { /* ignore */ }
+  let cts = [];
+  try { cts = await proxmox.request("GET", `/nodes/${NODE()}/lxc`) || []; } catch { /* ignore */ }
   const runningVms = qemus.filter((q) => q.status === "running");
 
   // Guest storage aggregate: every VM disk visible on the node
@@ -211,6 +216,10 @@ async function adminHealth() {
     kvms: {
       running: runningVms.length,
       total: qemus.length,
+    },
+    lxcs: {
+      running: cts.filter((c) => c.status === "running").length,
+      total: cts.length,
     },
     customerVms: customerVms.map((v) => ({
       vmid: v.vmid,

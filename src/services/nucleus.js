@@ -29,19 +29,20 @@ async function nucleusRollback(orderId, finalStatus = "REJECTED", rejectReason =
   });
   if (!order) throw new Error(`Order ${orderId} not found`);
 
-  // ---- STEP 1: shutdown & destroy VM ------------------------------------
+  // ---- STEP 1: shutdown & destroy guest (KVM qemu or LXC container) ------
+  const kind = order.package?.kind === "LXC" ? "LXC" : "KVM";
   if (order.vps) {
     try {
-      await proxmox.stopVm(order.vps.vmid);          // task-stop + UPID poll
-      stepsLog.push({ step: "vm_stop", ok: true, vmid: order.vps.vmid });
+      await proxmox.stopGuest(kind, order.vps.vmid); // task-stop + UPID poll
+      stepsLog.push({ step: "guest_stop", ok: true, vmid: order.vps.vmid, kind });
     } catch (err) {
-      stepsLog.push({ step: "vm_stop", ok: false, error: err.message });
+      stepsLog.push({ step: "guest_stop", ok: false, error: err.message });
     }
     try {
-      await proxmox.destroyVm(order.vps.vmid);       // DELETE /qemu/{vmid}
-      stepsLog.push({ step: "vm_destroy", ok: true, vmid: order.vps.vmid });
+      await proxmox.destroyGuest(kind, order.vps.vmid); // DELETE /qemu|/lxc/{vmid}
+      stepsLog.push({ step: "guest_destroy", ok: true, vmid: order.vps.vmid, kind });
     } catch (err) {
-      stepsLog.push({ step: "vm_destroy", ok: false, error: err.message });
+      stepsLog.push({ step: "guest_destroy", ok: false, error: err.message });
     }
   }
 

@@ -5,9 +5,9 @@
   <div class="pagehead">
     <div>
       <h1>Checkout — <%= pkg.name %></h1>
-      <p><%= pkg.vcpu %> vCPU · <%= (pkg.ramMb/1024).toFixed(pkg.ramMb % 1024 ? 1 : 0) %> GB RAM · <%= pkg.diskGb %> GB SSD</p>
+      <p><%= pkg.vcpu %> vCPU · <%= (pkg.ramMb/1024).toFixed(pkg.ramMb % 1024 ? 1 : 0) %> GB RAM · <%= pkg.diskGb %> GB SSD · <b><%= pkg.kind === 'LXC' ? 'Container LXC (Ubuntu 22.04 — akun SSH root)' : 'VM KVM — OS Ubuntu 22.04 LTS terpasang otomatis' %></b></p>
     </div>
-    <a href="/" class="btn ghost sm">← Batal</a>
+    <a href="/#<%= pkg.kind === 'LXC' ? 'paket-lxc' : 'paket' %>" class="btn ghost sm">← Batal</a>
   </div>
 
   <div class="banner-warning"><span class="big">⚠</span><span style="font-size:1rem"><%= warningText %></span></div>

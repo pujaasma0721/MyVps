@@ -8,6 +8,7 @@ const prisma = require("../lib/prisma");
 const { register, login, createSession, destroySession } = require("../middleware/auth");
 const { proofUpload } = require("../lib/multer");
 const { provisionInstantOrder, assertHostHasFreeRam } = require("../services/provisioning");
+const { checkPackageCapacity } = require("../services/capacity");
 const config = require("../config");
 const C = require("../config/constants");
 
@@ -20,11 +21,14 @@ function setLoginLimiter(fn) { loginLimiter = fn; }
 // ---- Landing page: active packages --------------------------------------
 router.get("/", async (req, res, next) => {
   try {
-    const packages = await prisma.package.findMany({
+    const all = await prisma.package.findMany({
       where: { isActive: true },
       orderBy: { sortOrder: "asc" },
     });
-    res.render("pages/home", { title: "MYVPS — VPS Rumah, Harga Kaki Lima", packages, user: req.user || null });
+    // Dua tier produk terpisah: VM penuh (K-xxx) vs container (L-xxx)
+    const kvmPackages = all.filter((p) => p.kind !== "LXC");
+    const lxcPackages = all.filter((p) => p.kind === "LXC");
+    res.render("pages/home", { title: "MYVPS — VPS Rumah, Harga Kaki Lima", kvmPackages, lxcPackages, lxcNetMbps: config.proxmox.lxcNetMbps, packages: kvmPackages, user: req.user || null });
   } catch (e) { next(e); }
 });
 
@@ -80,6 +84,15 @@ router.get("/checkout/:packageId", async (req, res, next) => {
   try {
     const pkg = await prisma.package.findUnique({ where: { id: req.params.packageId } });
     if (!pkg || !pkg.isActive) return res.status(404).render("pages/message", { title: "Paket tidak ditemukan", message: "Paket tersebut tersedia.", user: req.user || null });
+
+    // Preflight: jangan tampilkan form checkout kalau kapasitas tidak aman
+    const cap = await checkPackageCapacity(pkg);
+    if (!cap.ok) {
+      return res.render("pages/sold-out", {
+        title: "Paket Habis", pkg, user: req.user || null, why: humanizeFailures(cap.failures),
+      });
+    }
+
     res.render("pages/checkout", {
       title: `Checkout — ${pkg.name}`,
       pkg,
@@ -93,6 +106,19 @@ router.get("/checkout/:packageId", async (req, res, next) => {
     });
   } catch (e) { next(e); }
 });
+
+/** {code,message} raw → kalimat ramah customer untuk halaman Paket Habis. */
+function humanizeFailures(failures) {
+  const wording = {
+    RAM: "Kapasitas RAM server untuk spesifikasi ini sedang penuh.",
+    CPU: "Kapasitas core prosesor untuk spesifikasi ini sedang penuh.",
+    RAM_LXC: "Kuota RAM paket LXC (container) sedang penuh.",
+    CPU_LXC: "Kuota core prosesor paket LXC (container) sedang penuh.",
+    IP_POOL: "Slot alamat jaringan untuk server baru sedang habis.",
+    PORT_POOL: "Slot port akses untuk server baru sedang habis.",
+  };
+  return failures.map((f) => wording[f.code] || f.message);
+}
 
 router.post("/checkout/:packageId", proofUpload.single("proofImage"), async (req, res, next) => {
   const pkgId = req.params.packageId;
@@ -111,6 +137,14 @@ router.post("/checkout/:packageId", proofUpload.single("proofImage"), async (req
       const e = new Error("PACKAGE_NOT_FOUND");
       e.status = 404;
       throw e;
+    }
+
+    // Guard final SEBELUM alokasi apa pun — pesan khusus "Paket Habis"
+    const cap = await checkPackageCapacity(pkgRow);
+    if (!cap.ok) {
+      return res.status(409).render("pages/sold-out", {
+        title: "Paket Habis", pkg: pkgRow, user: req.user || null, why: humanizeFailures(cap.failures),
+      });
     }
 
     const { order } = await provisionInstantOrder({

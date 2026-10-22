@@ -71,22 +71,22 @@ router.post("/order/:orderId/resend-credentials", async (req, res, next) => {
     if (!order || !order.vps) return res.status(404).json({ error: "Pesanan/VPS tidak ditemukan." });
 
     const vmPassword = vault.decrypt(order.vps.osPassword);
-    const pkg = order.package;
+    const osUser = order.vps.osUsername || (order.package.kind === "LXC" ? C.LXC_USER : C.VM_USER);
     const text =
       `Kredensial VPS (kirim ulang):\n\n` +
       `  - IP Publik (NAT): ${config.publicIp}\n` +
       `  - Port SSH Kustom: ${order.vps.portCustom}\n` +
-      `  - Username: ${C.VM_USER}\n` +
+      `  - Username: ${osUser}\n` +
       `  - Password : ${vmPassword}\n\n` +
       `Subdomain default: ${order.id}.${config.mainDomain}\n` +
-      `SSH: ssh ${C.VM_USER}@${config.publicIp} -p ${order.vps.portCustom}\n\n`;
+      `SSH: ssh ${osUser}@${config.publicIp} -p ${order.vps.portCustom}\n\n`;
     const html =
       `<p>Kredensial VPS (kirim ulang):</p><ul>` +
       `<li>IP Publik: <b>${config.publicIp}</b></li>` +
       `<li>Port SSH Kustom: <b>${order.vps.portCustom}</b></li>` +
-      `<li>Username: <b>${C.VM_USER}</b></li>` +
+      `<li>Username: <b>${osUser}</b></li>` +
       `<li>Password: <b>${vmPassword}</b></li></ul>` +
-      `<p>SSH: <code>ssh ${C.VM_USER}@${config.publicIp} -p ${order.vps.portCustom}</code></p>`;
+      `<p>SSH: <code>ssh ${osUser}@${config.publicIp} -p ${order.vps.portCustom}</code></p>`;
     const emailer = require("../lib/email");
     await emailer.sendMail({
       to: req.user.email,

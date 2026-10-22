@@ -19,6 +19,7 @@ const { router: publicRoutes, setLoginLimiter } = require("./src/routes/public")
 const clientRoutes = require("./src/routes/client");
 const adminRoutes = require("./src/routes/admin");
 const prisma = require("./src/lib/prisma");
+const { sweepExpiredOrders } = require("./src/services/expiry");
 
 const app = express();
 
@@ -34,7 +35,12 @@ app.use(helmet({
       "style-src-elem": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       "script-src": ["'self'", "'unsafe-inline'"],
       "font-src": ["'self'", "https://fonts.gstatic.com"],
-      "upgrade-insecure-requests": [],
+      // helmet useDefaults menambahkan "upgrade-insecure-requests" secara
+      // default, yang memaksa upgrade http->https untuk SEMUA subresource.
+      // Karena sertifikat hanya untuk mystorage.biz.id, akses via
+      // http://192.168.1.20 membuat seluruh CSS/fetch gagal TLS diam-diam
+      // (halaman tanpa style). Dinonaktifkan eksplisit dengan null:
+      "upgrade-insecure-requests": null,
     },
   },
   crossOriginEmbedderPolicy: false,
@@ -143,6 +149,13 @@ server.listen(config.port, () => {
   const mode = config.proxmox.mock ? "MOCK" : "REAL-PROXMOX";
   console.log(`myvps-billing listening on :${config.port} [${config.env}] proxmox=${mode} node=${config.proxmox.node} template=${config.proxmox.templateId}`);
 });
+
+// Expiry patrol: destroy ACTIVE VMs whose subscription ended more than
+// EXPIRY_AUTO_DELETE_HOURS ago. Runs on boot (after a settle delay) and every
+// 10 minutes; each run is isolated so one bad sweep never kills the app.
+const expiryPatrol = () => sweepExpiredOrders().catch((e) => console.error("[expiry] sweep failed:", e.message));
+setTimeout(expiryPatrol, 30 * 1000).unref();
+setInterval(expiryPatrol, 10 * 60 * 1000).unref();
 
 // graceful shutdown
 ["SIGINT", "SIGTERM"].forEach((sig) =>

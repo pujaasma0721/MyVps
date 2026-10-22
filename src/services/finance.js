@@ -5,6 +5,7 @@
  * unique([orderId]) makes double-verification a no-op.
  */
 const prisma = require("../lib/prisma");
+const { computeExpiry } = require("./expiry");
 
 function monthKey(d) {
   const y = d.getUTCFullYear();
@@ -35,7 +36,14 @@ async function verifyInvoice(orderId, adminUserId, valid) {
   // status flip only if not already ACTIVE
   await prisma.order.update({
     where: { id: orderId },
-    data: { status: order.status === "PENDING_PAYMENT" ? "ACTIVE" : order.status, verifiedAt: now },
+    data: {
+      status: order.status === "PENDING_PAYMENT" ? "ACTIVE" : order.status,
+      verifiedAt: now,
+      // First activation starts the subscription clock: verifiedAt + months.
+      ...(order.status === "PENDING_PAYMENT"
+        ? { expiresAt: computeExpiry(now, order.months) }
+        : {}),
+    },
   });
   await prisma.monthlyRevenueItem.upsert({
     where: { orderId },

@@ -1,0 +1,227 @@
+/* ============================================================
+   CLIENT AREA — MYVPS premium app theme
+   Same visual language as the landing page (dark indigo hero,
+   glass surfaces, cyan/pink accents) adapted for an app layout
+   with sidebar. Layered on top of theme.css tokens.
+   ============================================================ */
+
+/* ---------- Shell & sidebar ---------- */
+.appwrap {
+  background:
+    radial-gradient(900px 420px at 110% -5%, rgba(99,225,255,.07) 0%, transparent 60%),
+    radial-gradient(800px 420px at -10% 108%, rgba(255,109,167,.06) 0%, transparent 60%),
+    var(--background);
+}
+
+.sidebar { border-right: 1px solid var(--line); background: var(--sidebar); }
+.sidebar .brand {
+  padding: 1.15rem 1.25rem;
+  font-size: 1.1rem; letter-spacing: -0.02em;
+}
+.sidebar .brand .brand-dot {
+  width: 30px; height: 30px; border-radius: 9px;
+  background: linear-gradient(135deg, #245bfa, #6b8bff);
+  box-shadow: 0 4px 12px rgba(36,91,250,.32);
+  font-size: .85rem;
+}
+.sidebar nav a {
+  position: relative;
+  border-radius: 10px;
+  font-weight: 500;
+  transition: background .15s ease, color .15s ease;
+}
+.sidebar nav a:hover { background: var(--secondary); }
+.sidebar nav a.active {
+  background: var(--accent); color: var(--accent-foreground); font-weight: 700;
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+.navhead {
+  font-size: .68rem; letter-spacing: .12em; font-weight: 800;
+  color: var(--muted-foreground); margin-top: .9rem;
+}
+.sidebar .sidefoot { font-size: .78rem; }
+
+/* ---------- Page header hero ---------- */
+.pagehead {
+  position: relative;
+  align-items: flex-start;
+  margin-bottom: 1.6rem;
+  padding: 1.9rem 2.1rem;
+  border-radius: 20px;
+  color: #fff;
+  background:
+    radial-gradient(700px 300px at 88% -30%, rgba(99,225,255,.24) 0%, transparent 60%),
+    radial-gradient(520px 280px at -5% 130%, rgba(255,109,167,.20) 0%, transparent 60%),
+    linear-gradient(130deg, #0f226e 0%, #0b1c63 55%, #071344 100%);
+  box-shadow: 0 16px 38px rgba(10,22,60,.24);
+  overflow: hidden;
+}
+.pagehead::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
+  background-size: 38px 38px;
+  mask-image: radial-gradient(ellipse 75% 90% at 60% 10%, #000 30%, transparent 78%);
+  -webkit-mask-image: radial-gradient(ellipse 75% 90% at 60% 10%, #000 30%, transparent 78%);
+}
+.pagehead > * { position: relative; z-index: 1; }
+.pagehead h1 {
+  margin: 0 0 .35rem;
+  font-size: clamp(1.5rem, 2.6vw, 2rem);
+  font-weight: 800; letter-spacing: -0.03em; line-height: 1.1;
+  color: #fff;
+}
+.pagehead h1 code {
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 8px; padding: .08em .45em;
+  font-size: .88em; color: #fff;
+}
+.pagehead p {
+  margin: 0; color: rgba(224,235,255,.85);
+  font-size: .95rem; line-height: 1.6;
+}
+.pagehead p code { color: #9dd7ff; background: rgba(255,255,255,.1); border-radius: 6px; padding: .05em .4em; font-size: .9em; }
+.pagehead .btn { box-shadow: 0 8px 20px rgba(3,10,40,.35); }
+
+/* dark-page status badges inside pagehead */
+.pagehead .badge { font-size: .84rem; padding: .3rem .85rem; box-shadow: 0 4px 14px rgba(3,10,40,.3); }
+
+/* ---------- Stat / info cards ---------- */
+.stats { gap: 1.05rem; }
+.stat {
+  border-radius: 16px;
+  padding: 1.25rem 1.4rem;
+  border: 1px solid var(--border);
+  transition: transform .18s cubic-bezier(.2,.8,.2,1), box-shadow .18s ease, border-color .18s ease;
+}
+.stat:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 32px rgba(10,22,60,.10);
+  border-color: rgba(36,91,250,.35);
+}
+.stat .label {
+  display: flex; align-items: center; gap: .5rem;
+  font-size: .74rem; font-weight: 800;
+  letter-spacing: .09em; text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+.stat .label::before {
+  content: ""; width: 8px; height: 8px; border-radius: 50%;
+  background: linear-gradient(135deg, #245bfa, #6b8bff);
+  box-shadow: 0 0 0 3px rgba(36,91,250,.14);
+}
+.stat .value { font-size: 1.35rem; font-weight: 800; letter-spacing: -0.02em; margin-top: .5rem; }
+.stat .sub { font-size: .84rem; line-height: 1.6; margin-top: .35rem; }
+.stat .sub code {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 6px; padding: .06em .4em; font-size: .88em;
+}
+.stat .btn { margin-top: .55rem; }
+
+/* preform XHR config snippet */
+.stat pre.ssh-config {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: .85rem 1rem;
+  font-size: .8rem; line-height: 1.55;
+  overflow-x: auto; white-space: pre;
+}
+.stat pre.ssh-config .hostline { color: var(--accent-foreground); font-weight: 700; }
+
+/* ---------- Empty state ---------- */
+.empty-state {
+  text-align: center; padding: 3.4rem 2rem !important;
+  border-radius: 20px;
+}
+.empty-state .glyph {
+  width: 64px; height: 64px; margin: 0 auto .9rem;
+  border-radius: 18px;
+  background: linear-gradient(135deg, var(--accent), #eef2ff);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.7rem; color: var(--primary);
+  box-shadow: inset 0 0 0 1px rgba(36,91,250,.18), 0 8px 20px rgba(36,91,250,.10);
+}
+.empty-state h3 { font-size: 1.15rem; letter-spacing: -0.01em; margin: .2rem 0 .4rem; }
+.empty-state p { color: var(--muted-foreground); max-width: 26rem; margin: 0 auto 1.4rem; line-height: 1.65; }
+
+/* ---------- Table ---------- */
+.tablewrap {
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(15,23,42,.05), 0 10px 28px rgba(10,22,60,.06);
+}
+.tablewrap th {
+  font-size: .72rem; font-weight: 800;
+  letter-spacing: .09em; text-transform: uppercase;
+  padding: .85rem 1.05rem;
+  color: var(--muted-foreground);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.tablewrap td { padding: .85rem 1.05rem; }
+.tablewrap tbody tr { transition: background .12s ease; }
+.tablewrap tbody tr:hover { background: var(--surface-2); }
+.tablewrap .pkg-cell b { font-weight: 700; letter-spacing: -0.01em; }
+.tablewrap .pkg-cell small { color: var(--muted-foreground); font-size: .78rem; }
+.tablewrap code {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: .1em .45em; font-size: .82em; white-space: nowrap;
+}
+.tablewrap .rowlink { font-weight: 700; }
+
+/* ---------- Banner capture (soft warning) ---------- */
+.banner-warning {
+  border: 1px solid #fcd9a8; border-left-width: 4px;
+  background: linear-gradient(92deg, #fff7ed 0%, #fffdf8 100%);
+  color: #9a3412;
+  border-radius: 14px; padding: 1rem 1.2rem;
+  font-size: .93rem; font-weight: 500; line-height: 1.6;
+  box-shadow: 0 4px 14px rgba(234,88,12,.07);
+  gap: .7rem;
+}
+.banner-warning .big { font-size: 1.1rem; filter: saturate(1.2); }
+.dark .banner-warning {
+  background: rgba(245,158,11,.09);
+  border-color: rgba(245,158,11,.32);
+  color: #fbbf24;
+  box-shadow: none;
+  border-left-width: 4px;
+}
+
+/* ---------- Section blocks on order page ---------- */
+.card { border-radius: 16px; }
+.appwrap .card > h3 {
+  font-size: 1rem; letter-spacing: -0.01em;
+  display: flex; align-items: center; gap: .55rem;
+  margin-bottom: .85rem;
+}
+.appwrap .card > h3::before {
+  content: ""; width: 4px; height: 17px; border-radius: 4px;
+  background: linear-gradient(180deg, #245bfa, #ff5d9e);
+  flex: 0 0 auto;
+}
+.card .hint, .card p { color: var(--muted-foreground); }
+
+/* file input (bukti transfer) */
+.appwrap input[type="file"] {
+  font-size: .85rem; color: var(--muted-foreground);
+  border: 1.5px dashed var(--input);
+  border-radius: 10px; padding: .7rem .8rem; width: 100%;
+  background: var(--surface-2);
+  transition: border-color .15s ease, background .15s ease;
+}
+.appwrap input[type="file"]:hover { border-color: var(--primary); background: var(--accent); }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 940px) {
+  .pagehead { padding: 1.5rem 1.4rem; }
+  .stats { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 640px) {
+  .stats { grid-template-columns: 1fr; }
+}

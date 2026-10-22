@@ -13,6 +13,7 @@
 const https = require("https");
 const { URLSearchParams } = require("url");
 const config = require("../config");
+const C = require("../config/constants");
 const NODE = () => config.proxmox.node; // real node name from env (e.g. "puja")
 const mock = require("../mock/proxmox-mock");
 
@@ -101,6 +102,8 @@ async function postTask(path, params) {
  * Polling loop for a Proxmox task.
  * Resolves when { status: "stopped", exitstatus: "OK" }.
  * Re-throws with the task exitstatus on failure.
+ * exitstatus "WARNINGS: <n>" is treated as success, but the warnings are
+ * surfaced in the error message so operators see them in logs.
  */
 async function waitForTask(upid, { intervalMs, timeoutMs } = {}) {
   const interval = intervalMs || require("../config/constants").TASK_POLL_INTERVAL_MS;
@@ -112,6 +115,10 @@ async function waitForTask(upid, { intervalMs, timeoutMs } = {}) {
     const st = await request("GET", `/nodes/${node}/tasks/${encodeURIComponent(upid)}/status`);
     if (st && st.status === "stopped") {
       if (st.exitstatus === "OK") return st;
+      if (/^WARNINGS(:\s*\d+)?$/.test(st.exitstatus)) {
+        console.warn(`[proxmox] task completed with warnings [${upid}] exitstatus=${st.exitstatus}`);
+        return st;
+      }
       throw new Error(`Proxmox task failed [${upid}] exitstatus=${st.exitstatus}`);
     }
     if (started + timeout < Date.now()) {
@@ -201,7 +208,69 @@ async function vmStatus(vmid) {
   }
 }
 
-/** Next free VM id from the cluster. */
+// ---- LXC container guest (optional second product tier) -----------------
+
+/**
+ * Create + start an unprivileged LXC container from the node-local template
+ * tarball. Password belongs to the container ROOT user (PVE create hook) —
+ * unlike KVM cloud-init there is no per-user injection. Disk size, cores,
+ * RAM, static veth on the internal NAT bridge all set at create time.
+ */
+async function createLxc({ vmid, hostname, diskGb, cores, ramMb, ipInternal, rootPassword }) {
+  // Bandwidth cap: tc shaping on the veth (host-side). One greedy container
+  // must never absorb the whole shared uplink.
+  // Proxmox `rate` on net0 is MB/s, and tc class becomes rate*8 Mbit/s.
+  // Convert Mbps -> MB/s so the limit matches what we advertise to buyers.
+  const rateMbPerSec = Math.max(1, Math.floor(config.proxmox.lxcNetMbps / 8));
+  return postTaskAndWait(`/nodes/${NODE()}/lxc`, {
+    vmid: String(vmid),
+    hostname: String(hostname).slice(0, 60),
+    ostype: "ubuntu",
+    ostemplate: config.proxmox.lxcOstemplate,
+    rootfs: `${config.proxmox.lxcStorage}:${diskGb}`,
+    cores: String(cores),
+    memory: String(ramMb),
+    swap: "0",
+    password: rootPassword,
+    unprivileged: "1",
+    net0: `name=eth0,bridge=${C.BRIDGE},rate=${rateMbPerSec},ip=${ipInternal}/${C.NETMASK_CIDR},gw=${C.GATEWAY},firewall=0`,
+    onboot: "0",
+    start: "1",
+  }, { intervalMs: 1500, timeoutMs: 3 * 60 * 1000 });
+}
+
+function startLxc(vmid) {
+  return postTaskAndWait(`/nodes/${NODE()}/lxc/${vmid}/status/start`, {});
+}
+
+function stopLxc(vmid) {
+  return postTaskAndWait(`/nodes/${NODE()}/lxc/${vmid}/status/stop`, {});
+}
+
+/** DELETE /lxc/{id} — CT must be stopped first; purge unreferenced volumes. */
+function destroyLxc(vmid) {
+  return request("DELETE", `/nodes/${NODE()}/lxc/${vmid}?destroy-unreferenced-disks=1&purge=1`);
+}
+
+/** Single CT status or null if absent. Mirrors vmStatus(). */
+async function lxcStatus(vmid) {
+  try {
+    return await request("GET", `/nodes/${NODE()}/lxc/${vmid}/status/current`);
+  } catch (err) {
+    if (err.status === 404 || err.status === 500) return null; // CT gone
+    throw err;
+  }
+}
+
+/** Dispatch stop/destroy/status for either guest kind (KVM qemu vs LXC). */
+function stopGuest(kind, vmid) { return kind === "LXC" ? stopLxc(vmid) : stopVm(vmid); }
+function destroyGuest(kind, vmid) { return kind === "LXC" ? destroyLxc(vmid) : destroyVm(vmid); }
+function guestStatus(kind, vmid) { return kind === "LXC" ? lxcStatus(vmid) : vmStatus(vmid); }
+
+/**
+ * Next free VM id from the cluster. We probe BOTH qemu and lxc so a K-MICRO
+ * VM and an LXC container can never collide on the same id.
+ */
 async function nextVmId() {
   if (config.proxmox.mock) return mock.nextVmId();
   // Loop guard: PVE's /cluster/nextid suggests an ID; if a VM with that id
@@ -212,7 +281,10 @@ async function nextVmId() {
     const id = parseInt(used, 10);
     if (!Number.isFinite(id)) throw new Error("Could not obtain next VM id");
     const existing = await vmStatus(id);
-    if (existing === null) return id; // truly free
+    if (existing === null) {
+      const existingCt = await lxcStatus(id);
+      if (existingCt === null) return id; // truly free in both worlds
+    }
     await new Promise((r) => setTimeout(r, 200));
   }
   throw new Error("No free VM id found after 5 attempts");
@@ -232,5 +304,14 @@ module.exports = {
   stopVm,
   destroyVm,
   vmStatus,
+  // LXC container tier
+  createLxc,
+  startLxc,
+  stopLxc,
+  destroyLxc,
+  lxcStatus,
+  stopGuest,
+  destroyGuest,
+  guestStatus,
   nextVmId,
 };

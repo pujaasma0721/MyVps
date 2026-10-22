@@ -281,7 +281,8 @@
     setText("vmdisk-val", d.vmsDisk.usedGb + " GB"); setBar("vmdisk-bar", d.vmsDisk.percent);
     setText("vmdisk-sub", d.vmsDisk.availableGb + " GB tersedia dari total alokasi " + d.vmsDisk.totalGb + " GB");
 
-    setText("vmcount-val", d.kvms.running + " jalan / " + d.kvms.total + " total");
+    var lxc = d.lxcs || { running: 0, total: 0 };
+    setText("vmcount-val", (d.kvms.running + lxc.running) + " jalan / " + (d.kvms.total + lxc.total) + " total " + "(" + d.kvms.running + "+" + lxc.running + " KVM+LXC)");
     var running = d.customerVms.filter(function (v) { return v.status === "running"; }).length;
     setText("vmcount-sub", "customer: " + running + " running dari " + d.customerVms.length + " VM terdaftar");
 

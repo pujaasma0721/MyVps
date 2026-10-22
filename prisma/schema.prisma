@@ -20,6 +20,11 @@ enum PoolStatus {
   USED
 }
 
+enum GuestKind {
+  KVM // full virtual machine from template (Proxmox qemu)
+  LXC // unprivileged Linux container (Proxmox pct)
+}
+
 enum OrderStatus {
   PENDING_PAYMENT // created, VPS already running, waiting proof verification
   ACTIVE          // payment verified by admin
@@ -53,14 +58,15 @@ model Session {
 
 // ------------------------------------------------------------- Package
 model Package {
-  id           String   @id @default(cuid())
-  name         String // e.g. "K-STARTER"
+  id           String     @id @default(cuid())
+  name         String // e.g. "K-STARTER" (KVM) atau "L-SOLO" (LXC)
+  kind         GuestKind  @default(KVM) // tier produk: VM penuh vs container
   vcpu         Int // virtual cores
   ramMb        Int // RAM in MB
-  diskGb       Int // disk in GB (scsi0 resize target)
-  priceMonthly Decimal  @db.Decimal(12, 2) // IDR
-  isActive     Boolean  @default(true)
-  sortOrder    Int      @default(0)
+  diskGb       Int // disk in GB (scsi0 resize / rootfs size)
+  priceMonthly Decimal    @db.Decimal(12, 2) // IDR
+  isActive     Boolean    @default(true)
+  sortOrder    Int        @default(0)
   orders       Order[]
 
   @@map("packages")
@@ -81,6 +87,9 @@ model Order {
   proofImage   String? // relative path under uploads/
   verifiedAt   DateTime?
   rejectReason String?
+  // Masa aktif selesai (verifiedAt + months bulan). VM dihapus otomatis
+  // EXPIRY_AUTO_DELETE_HOURS setelah lewat, kecuali admin memperpanjang.
+  expiresAt    DateTime?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 

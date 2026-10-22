@@ -1,0 +1,26 @@
+<%- include('../partials/head', { bodyClass: 'pubwrap', title: 'Paket Habis' }) %>
+<%- include('../partials/public-nav') %>
+
+<div class="card authbox" style="text-align:center">
+  <div style="font-size:2.5rem">📦</div>
+  <h1>Maaf, Paket Habis</h1>
+  <p style="color:var(--muted-foreground)">
+    Paket <b><%= pkg.name %></b> belum bisa dipesan saat ini — kapasitas server untuk
+    spesifikasi ini sudah penuh.<br>
+    Checkout dibatalkan otomatis, tidak ada biaya yang dibebankan.
+  </p>
+  <% if (locals.why && why.length) { %>
+    <ul style="text-align:left;color:var(--muted-foreground);font-size:.86rem;list-style:none;padding:0;margin:0 0 1.2rem">
+      <% why.forEach(function (w) { %>
+        <li style="margin-bottom:.35rem">• <%= w %></li>
+      <% }) %>
+    </ul>
+  <% } %>
+  <p style="color:var(--muted-foreground);font-size:.85rem">
+    Kapasitas bertambah ketika sewa lain habis. Silakan coba lagi nanti,
+    atau pilih paket dengan spesifikasi lebih kecil.
+  </p>
+  <a class="btn" href="/#packages">← Pilih Paket Lain</a>
+</div>
+
+<%- include('../partials/foot') %>

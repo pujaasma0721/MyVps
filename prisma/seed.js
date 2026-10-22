@@ -29,18 +29,32 @@ async function main() {
 
   // ---- komersial packages ----------------------------------------------
   const packages = [
-    { name: "K-MICRO",   vcpu: 1, ramMb: 1024, diskGb: 20, priceMonthly: 25000, sortOrder: 1 },
-    { name: "K-STARTER", vcpu: 2, ramMb: 2048, diskGb: 40, priceMonthly: 60000, sortOrder: 2 },
-    { name: "K-GROW",    vcpu: 4, ramMb: 4096, diskGb: 80, priceMonthly: 120000, sortOrder: 3 },
-    { name: "K-BIG",     vcpu: 8, ramMb: 8192, diskGb: 160, priceMonthly: 240000, sortOrder: 4 },
-  ];
-  // Dedupe: packages are keyed by NAME as primary-id-like lookup, so wipe
+    { name: "K-MICRO",   kind: "KVM", vcpu: 1, ramMb: 1024, diskGb: 20,  priceMonthly: 25000,  sortOrder: 1 },
+    { name: "K-STARTER", kind: "KVM", vcpu: 2, ramMb: 2048, diskGb: 40,  priceMonthly: 60000,  sortOrder: 2 },
+    { name: "K-GROW",    kind: "KVM", vcpu: 4, ramMb: 4096, diskGb: 80,  priceMonthly: 120000, sortOrder: 3 },
+    { name: "K-BIG",     kind: "KVM", vcpu: 8, ramMb: 8192, diskGb: 160, priceMonthly: 240000, sortOrder: 4 },
+  ];  // Dedupe: packages are keyed by NAME as primary-id-like lookup, so wipe
   // strays created by earlier runs (create lacked explicit id -> cuid duplicates).
   for (const p of packages) {
     await prisma.package.upsert({
       where: { id: p.name },
-      update: { priceMonthly: p.priceMonthly, sortOrder: p.sortOrder },
+      update: { kind: p.kind, priceMonthly: p.priceMonthly, sortOrder: p.sortOrder },
       create: { ...p, id: p.name }, // explicit id keeps re-seeds idempotent
+    });
+  }
+
+  console.log("Seeding LXC tier packages (bagian terpisah dari K-xxx)…");
+  const lxcPackages = [
+    { name: "L-SOLO", kind: "LXC", vcpu: 1, ramMb: 512,  diskGb: 10, priceMonthly: 12000, sortOrder: 11 },
+    { name: "L-PLUS", kind: "LXC", vcpu: 1, ramMb: 1024, diskGb: 15, priceMonthly: 18000, sortOrder: 12 },
+    { name: "L-PRO",  kind: "LXC", vcpu: 2, ramMb: 2048, diskGb: 25, priceMonthly: 35000, sortOrder: 13 },
+    { name: "L-MAX",  kind: "LXC", vcpu: 4, ramMb: 4096, diskGb: 40, priceMonthly: 70000, sortOrder: 14 },
+  ];
+  for (const p of lxcPackages) {
+    await prisma.package.upsert({
+      where: { id: p.name },
+      update: { kind: p.kind, priceMonthly: p.priceMonthly, sortOrder: p.sortOrder },
+      create: { ...p, id: p.name },
     });
   }
 

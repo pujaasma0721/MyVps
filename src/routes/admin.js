@@ -9,6 +9,7 @@ const { requireAdmin } = require("../middleware/auth");
 const { hostHealth, customerVmsLive, adminHealth } = require("../services/monitoring");
 const { nucleusRollback } = require("../services/nucleus");
 const { verifyInvoice } = require("../services/finance");
+const { extendOrder } = require("../services/expiry");
 
 const router = express.Router();
 router.use(requireAdmin);
@@ -39,6 +40,14 @@ router.get("/vps", async (req, res, next) => {
   try {
     const vms = await customerVmsLive();
     res.render("pages/admin/vps", { title: "Admin — Manajemen VM", vms, user: req.user });
+  } catch (e) { next(e); }
+});
+
+// Perpanjang masa aktif VM (renewal): +N bulan dari sisi masa aktif terakhir.
+router.post("/vps/:orderId/extend", async (req, res, next) => {
+  try {
+    await extendOrder(req.params.orderId, req.body.months);
+    res.redirect(String(req.body.back || "/admin/vps"));
   } catch (e) { next(e); }
 });
 
@@ -110,10 +119,11 @@ router.get("/packages", async (req, res, next) => {
 
 router.post("/packages", async (req, res, next) => {
   try {
-    const { name, vcpu, ramMb, diskGb, priceMonthly } = req.body;
+    const { name, kind, vcpu, ramMb, diskGb, priceMonthly } = req.body;
     await prisma.package.create({
       data: {
         name: String(name).trim(),
+        kind: kind === "LXC" ? "LXC" : "KVM",
         vcpu: parseInt(vcpu, 10),
         ramMb: parseInt(ramMb, 10),
         diskGb: parseInt(diskGb, 10),
@@ -135,11 +145,12 @@ router.get("/packages/:id/edit", async (req, res, next) => {
 
 router.post("/packages/:id", async (req, res, next) => {
   try {
-    const { name, vcpu, ramMb, diskGb, priceMonthly, isActive } = req.body;
+    const { name, kind, vcpu, ramMb, diskGb, priceMonthly, isActive } = req.body;
     await prisma.package.update({
       where: { id: req.params.id },
       data: {
         name: String(name).trim(),
+        kind: kind === "LXC" ? "LXC" : "KVM",
         vcpu: parseInt(vcpu, 10),
         ramMb: parseInt(ramMb, 10),
         diskGb: parseInt(diskGb, 10),

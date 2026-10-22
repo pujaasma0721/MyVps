@@ -4,13 +4,25 @@
 <main class="main">
   <div class="pagehead">
     <div>
-      <h1>VPS <code><%= order.id.slice(0,8).toUpperCase() %></code> — <%= order.package.name %></h1>
-      <p>Dibuat <%= new Date(order.createdAt).toLocaleString('id-ID') %> · <%= order.package.vcpu %> vCPU / <%= (order.package.ramMb/1024).toFixed(order.package.ramMb%1024?1:0) %> GB RAM / <%= order.package.diskGb %> GB SSD</p>
+      <h1>VPS <code><%= order.id.slice(0,8).toUpperCase() %></code> — <%= order.package.name %> <% if (order.package.kind === 'LXC') { %><span class="badge amber">CONTAINER LXC</span><% } else { %><span class="badge blue">VM KVM</span><% } %></h1>
+      <p>Dibuat <%= new Date(order.createdAt).toLocaleString('id-ID') %> · <%= order.package.vcpu %> vCPU / <%= (order.package.ramMb/1024).toFixed(order.package.ramMb%1024?1:0) %> GB RAM / <%= order.package.diskGb %> GB SSD ·
+      <% if (order.package.kind === 'LXC') { %>
+        <b>Container LXC Ubuntu 22.04</b> (akun SSH: <code>root</code> — tanpa Docker/kernel custom)
+      <% } else { %>
+        <b>OS Ubuntu 22.04 LTS</b> (VM penuh, kernel sendiri)
+      <% } %></p>
+      <% if (order.status === 'ACTIVE' && order.expiresAt) {
+           const daysLeft = Math.ceil((new Date(order.expiresAt) - Date.now()) / 86400000);
+      %>
+      <p>Masa aktif hingga <b><%= new Date(order.expiresAt).toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' }) %></b>
+        · <span style="color:<%= daysLeft <= 7 ? '#c2410c' : 'var(--muted-foreground)' %>"><b><%= daysLeft > 0 ? 'sisa ' + daysLeft + ' hari' : 'sudah lewat — segera perpanjang' %></b></span>.
+        VPS dihapus otomatis 1 hari setelah tanggal ini tanpa perpanjangan.</p>
+      <% } %>
     </div>
     <div>
-      <% if (order.status === 'ACTIVE') { %><span class="badge green" style="font-size:.9rem">Aktif</span>
-      <% } else if (order.status === 'PENDING_PAYMENT') { %><span class="badge amber" style="font-size:.9rem">Menunggu Verifikasi</span>
-      <% } else { %><span class="badge red" style="font-size:.9rem"><%= order.status %></span><% } %>
+      <% if (order.status === 'ACTIVE') { %><span class="badge green" style="font-size:.88rem">● Aktif</span>
+      <% } else if (order.status === 'PENDING_PAYMENT') { %><span class="badge amber" style="font-size:.88rem">◐ Menunggu Verifikasi</span>
+      <% } else { %><span class="badge red" style="font-size:.88rem"><%= order.status %></span><% } %>
     </div>
   </div>
 
@@ -24,17 +36,17 @@
     <div class="card stat">
       <div class="label">Alamat Akses SSH</div>
       <div class="value" style="font-size:1.05rem"><code><%= subDomain %></code></div>
-      <div class="sub">Port akses: <code><%= order.vps ? order.vps.portCustom : '—' %></code> — salin perintah: <code>ssh <%= order.vps ? order.vps.osUsername : 'ubuntu' %>@<%= subDomain %> -p <%= order.vps ? order.vps.portCustom : 'PORT' %></code></div>
+      <div class="sub">Port akses: <code><%= order.vps ? order.vps.portCustom : '—' %></code> — salin perintah: <code>ssh <%= order.vps ? order.vps.osUsername : (order.package.kind === 'LXC' ? 'root' : 'ubuntu') %>@<%= subDomain %> -p <%= order.vps ? order.vps.portCustom : 'PORT' %></code></div>
     </div>
     <div class="card stat" style="grid-column:1/-1">
-      <div class="label">Ingin cukup <code>ssh vps</code> tanpa mengingat port?</div>
+      <div class="label">Pintasan SSH — cukup <code>ssh vps-…</code></div>
       <div style="width:100%">
-        <p style="font-size:.85rem;color:var(--muted-foreground);margin:.3rem 0">Tempel baris-baris ini sekali saja ke file <code>~/.ssh/config</code> (di Windows: <code>C:\Users\Anda\.ssh\config</code>). Setelah itu cukup jalan: <code>ssh vps-<%= order.id ? order.id.slice(0,8) : 'xxxx' %></code></p>
-<code style="display:block;white-space:pre;overflow-x:auto;background:var(--muted);padding:.7rem;border-radius:.5rem;font-size:.8rem">Host vps-<%= order.id ? order.id.slice(0,8).toLowerCase() : 'xxxx' %>
+        <p style="font-size:.85rem;color:var(--muted-foreground);margin:.3rem 0 .7rem">Tempel baris-baris ini sekali saja ke file <code>~/.ssh/config</code> (di Windows: <code>C:\Users\Anda\.ssh\config</code>). Setelah itu cukup jalan: <code>ssh vps-<%= order.id ? order.id.slice(0,8) : 'xxxx' %></code></p>
+<pre class="ssh-config">Host vps-<%= order.id ? order.id.slice(0,8).toLowerCase() : 'xxxx' %>
     HostName <%= subDomain %>
-    User <%= order.vps ? order.vps.osUsername : 'ubuntu' %>
+    User <%= order.vps ? order.vps.osUsername : (order.package.kind === 'LXC' ? 'root' : 'ubuntu') %>
     Port <%= order.vps ? order.vps.portCustom : '22' %>
-    IdentitiesOnly yes</code>
+    IdentitiesOnly yes</pre>
       </div>
     </div>
     <div class="card stat">
@@ -91,7 +103,7 @@
 
       <div class="card">
         <h3>Koneksi SSH</h3>
-        <pre style="background:var(--surface-2);border-radius:var(--radius);padding:.8rem;overflow-x:auto">ssh <%= order.vps ? order.vps.osUsername : 'user' %>@<%= subDomain %> -p <%= order.vps ? order.vps.portCustom : 22 %></pre>
+        <pre style="background:var(--surface-2);border-radius:var(--radius);padding:.8rem;overflow-x:auto">ssh <%= order.vps ? order.vps.osUsername : (order.package.kind === 'LXC' ? 'root' : 'ubuntu') %>@<%= subDomain %> -p <%= order.vps ? order.vps.portCustom : 22 %></pre>
       </div>
     </div>
   </div>

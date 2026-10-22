@@ -1,6 +1,7 @@
 <% vms.forEach(function (v) { %>
 <tr>
   <td><code><%= v.vmid %></code></td>
+  <td><%= v.kind === 'LXC' ? '<span class="badge amber">LXC</span>' : '<span class="badge blue">KVM</span>' %></td>
   <td><b><%= v.name %></b><br><small style="color:var(--muted-foreground)"><code style="border:0;background:none;padding:0;color:inherit"><%= v.orderId.slice(0,8).toUpperCase() %></code></small></td>
   <td><%= v.owner %><br><small style="color:var(--muted-foreground)"><%= v.email %></small></td>
   <td><code><%= v.ipInternal %></code></td>
@@ -16,7 +17,24 @@
     <% } else if (v.orderStatus === 'PENDING_PAYMENT') { %><span class="badge amber">PENDING</span>
     <% } else { %><span class="badge red"><%= v.orderStatus %></span><% } %>
   </td>
+  <td>
+    <% if (v.orderStatus === 'ACTIVE' && v.expiresAt) {
+         const days = Math.floor((new Date(v.expiresAt) - Date.now()) / 86400000);
+    %>
+      <b><%= new Date(v.expiresAt).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' }) %></b>
+      <% if (days < 0) { %><br><span class="badge red">lewat <%= Math.abs(days) %> hari</span>
+      <% } else if (days <= 7) { %><br><span class="badge amber">sisa <%= days %> hari</span>
+      <% } else { %><br><small style="color:var(--muted-foreground)">sisa <%= days %> hari</small><% } %>
+      <form method="post" action="/admin/vps/<%= v.orderId %>/extend" style="margin-top:.35rem">
+        <button class="btn ghost sm" style="font-size:.72rem">+1 bln</button>
+      </form>
+    <% } else if (v.orderStatus === 'ACTIVE') { %>
+      <small style="color:var(--muted-foreground)">—</small>
+    <% } else { %>
+      <small style="color:var(--muted-foreground)">—</small>
+    <% } %>
+  </td>
   <td><%= new Date(v.createdAt).toLocaleDateString('id-ID') %></td>
 </tr>
 <% }) %>
-<% if (vms.length === 0) { %><tr><td colspan="8" style="text-align:center;color:var(--muted-foreground);padding:2rem">Belum ada VM pelanggan.</td></tr><% } %>
+<% if (vms.length === 0) { %><tr><td colspan="10" style="text-align:center;color:var(--muted-foreground);padding:2rem">Belum ada VM pelanggan.</td></tr><% } %>

@@ -54,6 +54,11 @@ const config = {
     tokenId: str("PROXMOX_TOKEN_ID", "myvps"),
     apiKey: str("PROXMOX_API_KEY", ""),
     insecureTls: bool("PROXMOX_INSECURE_TLS", true),
+    // LXC tier: node-local template tarball + target storage for container disks
+    lxcOstemplate: str("PROXMOX_LXC_OSTEMPLATE", "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst"),
+    lxcStorage: str("PROXMOX_LXC_STORAGE", "local-lvm"),
+    // Proxmox `rate` param takes MB/s; divide the intended Mbps target by 8.
+    lxcNetMbps: int("LXC_NET_RATE_MBPS", 100), // cap per LXC veth, in Mbps
   },
 
   smtp: {
@@ -66,6 +71,12 @@ const config = {
 
   payment: {
     note: str("PAYMENT_NOTE", "Transfer sesuai nominal, lalu upload bukti."),
+  },
+
+  // Telegram notifikasi (opsional — kosongkan untuk menonaktifkan)
+  telegram: {
+    botToken: process.env.TELEGRAM_BOT_TOKEN || "",
+    chatId: process.env.TELEGRAM_CHAT_ID || "",
   },
 
   admin: {

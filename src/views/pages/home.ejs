@@ -1,13 +1,13 @@
 <%- include('../partials/head', { bodyClass: 'pubwrap', title: 'VPS Murah Indonesia — Aktivasi Instan' }) %>
-<link rel="stylesheet" href="/static/css/landing.css?v=2">
+<link rel="stylesheet" href="/static/css/landing.css?v=3">
 <%- include('../partials/landing-nav') %>
 
 <!-- ================= HERO ala idCloudHost ================= -->
 <section class="hero-pro">
   <div class="hero-inner">
     <div>
-      <h1>Server VPS Murah<br>Indonesia</h1>
-      <p class="lead">Layanan Server VPS Indonesia terbaik untuk kebutuhan website dan aplikasi dengan keunggulan:</p>
+      <h1>Server VPS Cepat<br><span class="grad">&amp; Terjangkau</span></h1>
+      <p class="lead">Layanan Server VPS terbaik untuk anda Mahasiswa, UMKM, Server Test, Server UAT dan Server Development anda</p>
       <ul class="checklist">
         <li><span class="ck">✓</span> Storage NVMe + Processor Xeon</li>
         <li><span class="ck">✓</span> Akses admin penuh — server milik Anda sepenuhnya</li>
@@ -15,9 +15,8 @@
         <li><span class="ck">✓</span> Pilih paket sekarang, VPS jadi dalam ±1 menit</li>
       </ul>
       <div class="startfrom">Start From</div>
-      <div class="price">Rp <%= Math.min(...packages.map(p => Number(p.priceMonthly))).toLocaleString('id-ID') %><small>/Bulan</small></div>
+      <div class="price">Rp <%= Math.min(...[...kvmPackages, ...lxcPackages].map(p => Number(p.priceMonthly))).toLocaleString('id-ID') %><small>/Bulan</small></div>
       <a class="btn-grad" href="#paket">Selengkapnya</a>
-      <p class="hero-cta-note">Butuh yang Fleksibel? Coba <a href="#paket"><b>Cloud VPS</b></a></p>
     </div>
     <div class="server-illu">
       <%- include('../partials/server-illu') %>
@@ -40,19 +39,22 @@
 
   <div class="pkgs-pro">
     <%
-      const featuredIdx = Math.min(Math.floor((packages.length - 1) / 2), packages.length - 1);
-      packages.forEach(function (p, i) {
-        const cheapest = Number(p.priceMonthly) === Math.min(...packages.map(x => Number(x.priceMonthly)));
+      const featuredIdx = Math.min(Math.floor((kvmPackages.length - 1) / 2), kvmPackages.length - 1);
+      kvmPackages.forEach(function (p, i) {
+        const cheapest = Number(p.priceMonthly) === Math.min(...kvmPackages.map(x => Number(x.priceMonthly)));
     %>
       <div class="pkg-pro <%= i === featuredIdx ? 'featured' : '' %>">
+        <%- cheapest ? '<div class="ribbon">PALING EKONOMIS</div>' : '' %>
         <div class="pname"><%= p.name %></div>
-        <div class="ptag"><%= cheapest ? 'Paling ekonomis' : 'VPS '+p.vcpu+' core' %></div>
+        <div class="ptag"><span class="badge blue" style="font-size:.72rem">VM PENUH (KVM)</span> <%= cheapest ? 'Mulai hemat untuk Mahasiswa & UMKM' : 'VPS '+p.vcpu+' core · cocok untuk UAT & Production' %></div>
         <div class="pprice">
           <span class="cur">Rp</span>
-          <span class="num"><%= p.priceMonthly.toLocaleString('id-ID') %></span>
+          <span class="num"><%= Number(p.priceMonthly).toLocaleString('id-ID') %></span>
           <span class="per">/Bulan</span>
         </div>
+        <div class="pnote"><b>Ubuntu 22.04 LTS</b> terpasang otomatis · bisa dibayar bulanan · tanpa biaya setup</div>
         <ul class="feat">
+          <li><span class="ck">✓</span> OS Ubuntu 22.04 LTS (Linux)</li>
           <li><span class="ck">✓</span> <%= p.vcpu %> vCPU</li>
           <li><span class="ck">✓</span> <%= (p.ramMb/1024).toFixed(p.ramMb % 1024 ? 1 : 0) %> GB RAM</li>
           <li><span class="ck">✓</span> <%= p.diskGb %> GB SSD</li>
@@ -65,11 +67,56 @@
   </div>
 </section>
 
+<!-- ================= PAKET LXC (tier terpisah dari K-xxx) ================= -->
+<% if (lxcPackages.length) { %>
+<section id="paket-lxc" class="section-pad" style="padding-top:1rem">
+  <div class="sec-head">
+    <span class="kicker">LXC Container</span>
+    <h2>Paket LXC — Hemat, Irit, Cepat</h2>
+    <p>Linux container Ubuntu 22.04 di hardware yang sama — lebih murah karena share kernel dengan host. Cocok untuk web/app kecil, bot, tunnel SSH, dan testing.</p>
+  </div>
+
+  <div class="pkgs-pro">
+    <% lxcPackages.forEach(function (p, i) { %>
+      <div class="pkg-pro <%= i === 0 ? 'featured' : '' %>">
+        <div class="pname"><%= p.name %></div>
+        <div class="ptag"><span class="badge amber" style="font-size:.72rem">CONTAINER LXC</span> Ubuntu 22.04 · akun root penuh</div>
+        <div class="pprice">
+          <span class="cur">Rp</span>
+          <span class="num"><%= Number(p.priceMonthly).toLocaleString('id-ID') %></span>
+          <span class="per">/Bulan</span>
+        </div>
+        <div class="pnote"><b>SSH + Web</b> aktif instan · bisa dibayar bulanan · tanpa biaya setup</div>
+        <ul class="feat">
+          <li><span class="ck">✓</span> Ubuntu 22.04 LTS (Container LXC)</li>
+          <li><span class="ck">✓</span> <%= p.vcpu %> vCPU</li>
+          <li><span class="ck">✉</span> <%= (p.ramMb/1024).toFixed(p.ramMb % 1024 ? 1 : 0) %> GB RAM</li>
+          <li><span class="ck">✓</span> <%= p.diskGb %> GB SSD</li>
+          <li><span class="ck">✓</span> SSH aktivasi instan + subdomain gratis ber-HTTPS</li>
+        </ul>
+        <div class="cta"><a class="btn" style="width:100%" href="/checkout/<%= p.id %>">Pesan Sekarang</a></div>
+      </div>
+    <% }) %>
+  </div>
+
+  <div class="card" style="max-width:980px;margin:1.2rem auto 0">
+    <h3 style="margin-top:0">Apa BEDA-nya LXC vs KVM?</h3>
+    <p style="color:var(--muted-foreground);font-size:.9rem"><b>Paket K-xxx</b> adalah VM penuh (full virtualization): kernel sendiri, bebas Docker, custom kernel/ISO. <b>Paket L-xxx</b> adalah container: lebih murah dan lebih cepat aktif, karena berbagi kernel dengan host — dengan batas ini:</p>
+    <ul style="font-size:.9rem;color:var(--muted-foreground);line-height:1.7;margin:.4rem 0 .2rem;padding-left:1.2rem">
+      <li>❌ Tidak bisa install <b>Docker/Podman</b></li>
+      <li>❌ Tidak bisa ganti kernel atau load kernel module tertentu</li>
+      <li>❌ Tidak bisa pasang OS lain/custom ISO (fix Ubuntu 22.04)</li>
+      <li>🛡️ Network &amp; SMTP di-tata: bandwidth maksimal <%= lxcNetMbps %> Mbps/server, port 25 (SMTP keluar) diblokir anti-spam, zona waktu bisa Anda tentukan sendiri, RAM/CPU/disk yang tampil sesuai jalur paket Anda (terisolasi)</li>
+      <li>✅ Cocok untuk: web hosting, app script, bot, database kecil, SSH tunnel, server testing</li>
+    </ul>
+  </div>
+</section>
+<% } %>
+
 <!-- ================= KEUNGGULAN ================= -->
 <section id="keunggulan" class="section-pad" style="padding-top:0">
   <div class="sec-head">
     <span class="kicker">Kenapa MYVPS</span>
-    <h2>Infrastruktur Rumah, Kualitas Datacenter</h2>
   </div>
   <div class="why-grid">
     <div class="card why-card">
@@ -116,7 +163,11 @@
     </div>
     <div class="card">
       <h3>Bagaimana koneksi SSH?</h3>
-      <p style="color:var(--muted-foreground);font-size:.9rem">Via IP publik server dan port kustom yang tercantum di detail pesanan: <code>ssh ubuntu@IP -p PORT</code>.</p>
+      <p style="color:var(--muted-foreground);font-size:.9rem">Via IP publik server dan port kustom yang tercantum di detail pesanan: <code>ssh ubuntu@IP -p PORT</code>. Paket LXC memakai akun <code>root</code>.</p>
+    </div>
+    <div class="card">
+      <h3>Paket K-xxx vs L-xxx, pilih mana?</h3>
+      <p style="color:var(--muted-foreground);font-size:.9rem">Butuh Docker, custom kernel, atau OS lain? Pilih K-xxx (VM penuh). Hanya butuh hosting web/bot/tunnel murah? L-xxx (LXC) lebih hemat.</p>
     </div>
   </div>
 </section>
@@ -140,7 +191,8 @@
     </div>
     <div>
       <h4>Layanan</h4>
-      <a href="#paket">Paket VPS</a>
+      <a href="#paket">Paket VPS (KVM)</a>
+      <a href="#paket-lxc">Paket LXC</a>
       <a href="#keunggulan">Keunggulan</a>
       <a href="/client">Client Area</a>
     </div>

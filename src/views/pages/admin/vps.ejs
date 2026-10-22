@@ -5,14 +5,14 @@
   <div class="pagehead">
     <div>
       <h1>Manajemen VM Pelanggan</h1>
-      <p>Status <em>running/stopped</em> ditarik langsung dari Proxmox dan diperbarui tiap 6 detik.</p>
+      <p>Status <em>running/stopped</em> ditarik langsung dari Proxmox dan diperbarui tiap 6 detik. VM <b>EXPIRED ±1 hari setelah tanggal Expired</b> (kolom Expired) bila tidak diperpanjang.</p>
     </div>
   </div>
 
   <div class="tablewrap">
     <table>
       <thead><tr>
-        <th>VMID</th><th>Nama</th><th>Pemilik</th><th>IP Internal</th><th>Port SSH</th><th>VM Status</th><th>Order Status</th><th>Dibuat</th>
+        <th>VMID</th><th>Tipe</th><th>Nama</th><th>Pemilik</th><th>IP Internal</th><th>Port SSH</th><th>VM Status</th><th>Order Status</th><th>Expired</th><th>Dibuat</th>
       </tr></thead>
       <tbody data-live-rows="/admin/vps/rows">
         <%- include('../../admin/_vps_rows', { vms }) %>

@@ -23,6 +23,8 @@ const emailer = require("../lib/email");
 const vault = require("../lib/vault");
 const prisma = require("../lib/prisma");
 const { allocateIpAndPort, releaseIpAndPort, ServerFullError } = require("./resources");
+const { assertPackageCapacity } = require("./capacity");
+const { sendTelegram } = require("../lib/telegram");
 const { nucleusRollback } = require("./nucleus");
 
 /** Random but safe-to-type password for cloud-init (mix of alphanumerics). */
@@ -62,7 +64,8 @@ async function provisionInstantOrder({ userId, packageId, months, customDomain, 
   const pkg = await prisma.package.findUnique({ where: { id: packageId } });
   if (!pkg || !pkg.isActive) throw new Error("PACKAGE_NOT_FOUND");
 
-  await assertHostHasFreeRam(pkg.ramMb);
+  await assertPackageCapacity(pkg);   // RAM reserve + vCPU tanpa overcommit + pool slot
+  await assertHostHasFreeRam(pkg.ramMb); // belt-and-suspenders: nilai live host
 
   const orderId = crypto.randomUUID();
   const amount = pkg.priceMonthly.mul(months);
@@ -71,6 +74,8 @@ async function provisionInstantOrder({ userId, packageId, months, customDomain, 
   const { ip, port } = await allocateIpAndPort(orderId);
   const vmPassword = generateVmPassword();
   const vmid = await proxmox.nextVmId();
+  // LXC guest account is ROOT (PVE create hook); KVM uses cloud-init user
+  const osUser = pkg.kind === "LXC" ? C.LXC_USER : C.VM_USER;
 
   let order;
   try {
@@ -85,7 +90,7 @@ async function provisionInstantOrder({ userId, packageId, months, customDomain, 
         customDomain: customDomain || null,
         proofImage: proofImageRel || null,
         vps: {
-          create: { vmid, ipInternal: ip, portCustom: port, osPassword: vault.encrypt(vmPassword) },
+          create: { vmid, ipInternal: ip, portCustom: port, osUsername: osUser, osPassword: vault.encrypt(vmPassword) },
         },
         invoice: {
           create: { amount, note: `${pkg.name} x ${months} bln` },
@@ -100,19 +105,34 @@ async function provisionInstantOrder({ userId, packageId, months, customDomain, 
 
   // -- Steps 3..6 outside the DB transaction (long-running shell/API work)
   try {
-    // 3. clone -> resize -> package spec (vCPU/RAM) -> cloud-init -> start
-    await proxmox.cloneTemplate({ newId: vmid, name: `vps-${orderId}` }); // full=1
-    await proxmox.resizeDisk(vmid, "scsi0", pkg.diskGb);
-    // clone inherits template spec (2c/2GB) — force the purchased package size
-    await proxmox.applyPackageSpec(vmid, { vcpu: pkg.vcpu, ramMb: pkg.ramMb });
-    await proxmox.injectCloudInit(vmid, {
-      ciuser: C.VM_USER,               // ubuntu
-      cipassword: vmPassword,
-      ipconfig0: `ip=${ip}/${C.NETMASK_CIDR},gw=${C.GATEWAY}`, // attached to C.BRIDGE (vmbr1) via template config
-    });
-    await proxmox.startVm(vmid);
+    // 3. provision the guest — tier-dependent pipeline
+    if (pkg.kind === "LXC") {
+      // Container: create from the node-local tarball in ONE task (disk size,
+      // cores/RAM, root password, static veth on the NAT bridge, start).
+      await proxmox.createLxc({
+        vmid,
+        hostname: `lxc-${orderId.slice(0, 8).toLowerCase()}`,
+        diskGb: pkg.diskGb,
+        cores: pkg.vcpu,
+        ramMb: pkg.ramMb,
+        ipInternal: ip,
+        rootPassword: vmPassword,
+      });
+    } else {
+      // KVM: clone template 110 -> resize scsi0 -> package spec -> cloud-init -> start
+      await proxmox.cloneTemplate({ newId: vmid, name: `vps-${orderId}` }); // full=1
+      await proxmox.resizeDisk(vmid, "scsi0", pkg.diskGb);
+      // clone inherits template spec (2c/2GB) — force the purchased package size
+      await proxmox.applyPackageSpec(vmid, { vcpu: pkg.vcpu, ramMb: pkg.ramMb });
+      await proxmox.injectCloudInit(vmid, {
+        ciuser: C.VM_USER,               // ubuntu
+        cipassword: vmPassword,
+        ipconfig0: `ip=${ip}/${C.NETMASK_CIDR},gw=${C.GATEWAY}`, // attached to C.BRIDGE (vmbr1) via template config
+      });
+      await proxmox.startVm(vmid);
+    }
 
-    // 4. NAT: external pool port -> internal VPS SSH :22
+    // 4. NAT: external pool port -> internal guest SSH :22 (shared by both tiers)
     await shell.iptablesAddRule({ portCustom: port, ipInternal: ip, orderId });
 
     // 5. default subdomain vhost (spec uses wildcard cert; NO certbot here)
@@ -121,12 +141,26 @@ async function provisionInstantOrder({ userId, packageId, months, customDomain, 
     // custom domain vhosts are only added when the user wires them up post-purchase
 
     // 6. credential email
-    await sendCredentialsEmail(order, { publicIp: config.publicIp, port, subdomain, vmPassword, pkg });
+    await sendCredentialsEmail(order, { publicIp: config.publicIp, port, subdomain, vmPassword, pkg, osUser });
 
     await prisma.orderVps.update({
       where: { orderId },
       data: { vmStatus: "running" },
     });
+
+    // Telegram: lapor VPS baru ke owner (fire-and-forget, tak pernah gagalkan order)
+    sendTelegram(
+      `🆕 <b>VPS BARU TERBENTUK</b>\n\n` +
+      `👤 Customer: ${order.user.fullName} (${order.user.email})\n` +
+      `📦 Paket: <b>${pkg.name}</b> — ${pkg.vcpu} vCPU / ${pkg.ramMb} MB RAM / ${pkg.diskGb} GB SSD\n` +
+      `🧱 Tipe: ${pkg.kind === "LXC" ? "LXC (container)" : "KVM (VM penuh)"}\n` +
+      `⏱ Durasi: ${order.months} bulan\n` +
+      `💰 Tagihan: Rp ${Number(order.amount).toLocaleString("id-ID")}\n` +
+      `🖥 VMID: <code>${vmid}</code> · IP: <code>${ip}</code> · Port SSH: <code>${port}</code>\n` +
+      `🌐 Web: ${subdomain}\n` +
+      `🔖 Order: <code>${orderId.slice(0, 8).toUpperCase()}</code> (PENDING_PAYMENT)`
+    ).catch(() => {});
+
     return { order, vps: { ip, port, vmid, subdomain, password: vmPassword } };
   } catch (err) {
     console.error("[provisioning] failed mid-pipeline, running nuclear rollback:", err.message);
@@ -138,24 +172,24 @@ async function provisionInstantOrder({ userId, packageId, months, customDomain, 
   }
 }
 
-async function sendCredentialsEmail(order, { publicIp, port, subdomain, vmPassword, pkg }) {
+async function sendCredentialsEmail(order, { publicIp, port, subdomain, vmPassword, pkg, osUser }) {
   const host = subdomain; // per-order hostname: {order_id}.MAIN_DOMAIN — resolve ke IP publik (wildcard DNS-only)
   const text =
     `Terima kasih telah membeli ${pkg.name} di MYVPS.\n\n` +
     `Detail VPS Anda:\n` +
     `  - Server Anda (punya domain sendiri): ${host}\n` +
     `  - Port SSH Kustom: ${port}\n` +
-    `  - Username: ${C.VM_USER}\n` +
+    `  - Username: ${osUser}\n` +
     `  - Password : ${vmPassword}\n\n` +
-    `SSH: ssh ${C.VM_USER}@${host} -p ${port}\n\n` +
+    `SSH: ssh ${osUser}@${host} -p ${port}\n\n` +
     `PENTING: ${C.WARNING_24H_TEXT}\n`;
   const html =
     `<p>Terima kasih telah membeli <b>${pkg.name}</b> di MYVPS.</p>` +
     `<ul><li>Server Anda: <b>${host}</b></li>` +
     `<li>Port SSH Kustom: <b>${port}</b></li>` +
-    `<li>Username: <b>${C.VM_USER}</b></li>` +
+    `<li>Username: <b>${osUser}</b></li>` +
     `<li>Password: <b>${vmPassword}</b></li></ul>` +
-    `<p>SSH: <code>ssh ${C.VM_USER}@${host} -p ${port}</code></p>` +
+    `<p>SSH: <code>ssh ${osUser}@${host} -p ${port}</code></p>` +
     `<p><b>PENTING:</b> ${C.WARNING_24H_TEXT}</p>`;
   await emailer.sendMail({ to: order.user.email, subject: `Aktivasi VPS — ${order.id.slice(0, 8).toUpperCase()}`, text, html });
   // Credentials are now in the owner's mailbox; wipe the plaintext copy from RAM.

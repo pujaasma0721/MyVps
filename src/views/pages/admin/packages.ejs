@@ -12,12 +12,13 @@
   <div class="tablewrap" style="margin-bottom:1rem">
     <table>
       <thead><tr>
-        <th>Nama</th><th>vCPU</th><th>RAM</th><th>Disk</th><th>Harga/bln</th><th>Status</th><th style="text-align:right">Aksi</th>
+        <th>Nama</th><th>Tipe</th><th>vCPU</th><th>RAM</th><th>Disk</th><th>Harga/bln</th><th>Status</th><th style="text-align:right">Aksi</th>
       </tr></thead>
       <tbody>
         <% packages.forEach(function (p) { %>
         <tr>
           <td><b><%= p.name %></b></td>
+          <td><%= p.kind === 'LXC' ? '<span class="badge amber">LXC</span>' : '<span class="badge blue">KVM</span>' %></td>
           <td><%= p.vcpu %></td>
           <td><%= p.ramMb %> MB</td>
           <td><%= p.diskGb %> GB</td>
@@ -31,7 +32,7 @@
           </td>
         </tr>
         <% }) %>
-        <% if (packages.length === 0) { %><tr><td colspan="7" style="text-align:center;color:var(--muted-foreground);padding:2rem">Belum ada paket.</td></tr><% } %>
+        <% if (packages.length === 0) { %><tr><td colspan="8" style="text-align:center;color:var(--muted-foreground);padding:2rem">Belum ada paket.</td></tr><% } %>
       </tbody>
     </table>
   </div>
@@ -46,6 +47,13 @@
     <% } %>
       <div class="field-row">
         <div class="field"><label>Nama Paket</label><input type="text" name="name" value="<%= editing ? editing.name : '' %>" required></div>
+        <div class="field">
+          <label>Tipe Produk</label>
+          <select name="kind">
+            <option value="KVM" <%= editing ? (editing.kind === 'KVM' ? 'selected' : '') : 'selected' %>>KVM — VM penuh (K-xxx)</option>
+            <option value="LXC" <%= editing && editing.kind === 'LXC' ? 'selected' : '' %>>LXC — container (L-xxx)</option>
+          </select>
+        </div>
         <div class="field"><label>vCPU</label><input type="number" name="vcpu" min="1" value="<%= editing ? editing.vcpu : 2 %>" required></div>
       </div>
       <div class="field-row">
